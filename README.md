@@ -1,63 +1,36 @@
-# KociDom — instrukcja uruchomienia
+# KociDom v2
 
-To jest gotowa wersja portalu działająca jako statyczna strona na Cloudflare Pages i korzystająca z Supabase.
+Wersja zawiera:
 
-## 1. Uzupełnij połączenie z Supabase
+1. logowanie i rejestrację,
+2. formularz dodawania kota ze zdjęciem,
+3. panel administratora,
+4. osobną stronę każdego kota,
+5. wyszukiwarkę, filtry i sortowanie.
 
-Otwórz plik `config.js` i podmień:
+## Aktualizacja
 
-- `WKLEJ_TUTAJ_PROJECT_URL`
-- `WKLEJ_TUTAJ_ANON_PUBLIC_KEY`
+1. Najpierw uruchom `supabase-setup-v2.sql` w:
+   Supabase → SQL Editor → New query → wklej całość → Run.
 
-Dane znajdziesz w Supabase w ustawieniach projektu, w sekcji API / Data API.
+2. Otwórz `config.js` i wklej te same dane, które masz obecnie:
+   - Project URL
+   - Publishable key
 
-Wklejaj wyłącznie klucz `anon` / `publishable`.
+3. Wgraj wszystkie pliki do repozytorium GitHub, zastępując poprzednie:
+   - index.html
+   - styles.css
+   - app.js
+   - config.js
+   - README.md
 
-**Nie wklejaj klucza `service_role`.**
+4. Cloudflare wdroży zmiany automatycznie.
 
-## 2. Wgraj stronę na Cloudflare Pages
+## Test
 
-Spakowany ZIP możesz wgrać przez:
-
-Workers & Pages → Twój projekt → Create deployment / Upload assets
-
-Najbezpieczniej:
-1. rozpakować ZIP,
-2. uzupełnić `config.js`,
-3. ponownie spakować zawartość folderu,
-4. wgrać ZIP do Cloudflare.
-
-W katalogu głównym ZIP muszą znajdować się:
-- `index.html`
-- `styles.css`
-- `app.js`
-- `config.js`
-
-## 3. Logowanie
-
-Użytkownicy mogą:
-- rejestrować konta,
-- logować się,
-- dodawać ogłoszenia,
-- oglądać własne zgłoszenia.
-
-Administrator może:
-- oglądać oczekujące ogłoszenia,
-- zatwierdzać,
-- odrzucać z podaniem powodu.
-
-## 4. Konfiguracja e-mail w Supabase
-
-W Supabase przejdź do:
-
-Authentication → URL Configuration
-
-Ustaw `Site URL` na:
-`https://koci-dom.pages.dev`
-
-W `Redirect URLs` dodaj:
-`https://koci-dom.pages.dev/**`
-
-## 5. Ważne
-
-Strona korzysta z tabeli `public.cats`, tabeli `public.admins`, funkcji `public.is_admin()` i bucketa `cat-images`, utworzonych w poprzednich krokach.
+- utwórz zwykłe konto,
+- zaloguj się,
+- dodaj kota,
+- konto administratora otworzy Panel admina,
+- zaakceptuj ogłoszenie,
+- ogłoszenie pojawi się na stronie głównej.
