@@ -2,6 +2,6 @@
 // Klucz anon (publishable) może być używany w kodzie strony.
 // NIGDY nie wklejaj tutaj service_role key.
 window.KOCI_DOM_CONFIG = {
-  SUPABASE_URL: "WKLEJ_TUTAJ_PROJECT_URL",
-  SUPABASE_ANON_KEY: "WKLEJ_TUTAJ_ANON_PUBLIC_KEY"
+  SUPABASE_URL: "https://zwczkvphmlbygmosczli.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_Fj6OjwaBmlRqidmhZy0A8A_OmfuoZne"
 };
