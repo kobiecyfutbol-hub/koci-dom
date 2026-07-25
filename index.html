@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Ogólnopolski portal adopcji kotów. Dodaj ogłoszenie i pomóż znaleźć kotu dom.">
+  <title>KociDom — koty do adopcji</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="nav wrap">
+    <a class="logo" href="#/">Koci<span>Dom</span></a>
+    <nav>
+      <a href="#/">Koty</a>
+      <a href="#/dodaj" data-auth-only>Dodaj kota</a>
+      <a href="#/moje" data-auth-only>Moje zgłoszenia</a>
+      <a href="#/admin" data-admin-only>Panel admina</a>
+    </nav>
+    <div class="auth-actions">
+      <button class="btn ghost" id="loginBtn">Zaloguj się</button>
+      <button class="btn primary" id="registerBtn">Załóż konto</button>
+      <button class="btn ghost hidden" id="logoutBtn">Wyloguj</button>
+    </div>
+  </div>
+</header>
+
+<main id="app">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">Ogólnopolski portal adopcyjny</span>
+        <h1>Znajdź kota, który czeka właśnie na Ciebie.</h1>
+        <p>Przeglądaj zweryfikowane ogłoszenia. Każde zgłoszenie przed publikacją akceptuje administrator.</p>
+        <div class="hero-actions">
+          <a href="#/dodaj" class="btn primary big">Dodaj kota do adopcji</a>
+          <a href="#/jak-to-dziala" class="btn light big">Jak to działa?</a>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-cat">🐈</div>
+        <strong>Bezpieczne ogłoszenia</strong>
+        <span>Moderowane przed publikacją</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap page" id="homeView">
+    <div class="filters card">
+      <div class="field wide"><label>Szukaj</label><input id="searchInput" placeholder="Imię, miasto lub opis"></div>
+      <div class="field"><label>Płeć</label><select id="sexFilter"><option value="">Wszystkie</option><option value="kotka">Kotka</option><option value="kocur">Kocur</option></select></div>
+      <div class="field"><label>Wiek</label><select id="ageFilter"><option value="">Każdy</option><option value="kociak">Kociak</option><option value="mlody">Młody</option><option value="dorosly">Dorosły</option><option value="senior">Senior</option></select></div>
+      <div class="field"><label>Województwo</label><select id="voivodeshipFilter"><option value="">Cała Polska</option></select></div>
+      <button class="btn primary" id="filterBtn">Filtruj</button>
+    </div>
+
+    <div class="section-head">
+      <div><h2>Koty czekające na dom</h2><p id="listingCount">Ładowanie ogłoszeń…</p></div>
+    </div>
+    <div id="catsGrid" class="cats-grid"></div>
+    <div id="emptyState" class="empty hidden">Brak ogłoszeń spełniających kryteria.</div>
+  </section>
+
+  <section class="wrap page hidden" id="submitView">
+    <div class="page-title"><h2>Dodaj kota do adopcji</h2><p>Ogłoszenie trafi do administratora i pojawi się publicznie dopiero po zatwierdzeniu.</p></div>
+    <form id="catForm" class="form-card card">
+      <div class="form-grid">
+        <div class="field"><label>Imię kota *</label><input name="name" required></div>
+        <div class="field"><label>Płeć *</label><select name="sex" required><option value="">Wybierz</option><option value="kotka">Kotka</option><option value="kocur">Kocur</option><option value="nieznana">Nieznana</option></select></div>
+        <div class="field"><label>Grupa wiekowa *</label><select name="age_group" required><option value="">Wybierz</option><option value="kociak">Kociak</option><option value="mlody">Młody</option><option value="dorosly">Dorosły</option><option value="senior">Senior</option></select></div>
+        <div class="field"><label>Dokładny wiek</label><input name="age_description" placeholder="np. około 2 lat"></div>
+        <div class="field"><label>Miasto *</label><input name="city" required></div>
+        <div class="field"><label>Województwo *</label><select name="voivodeship" id="voivodeshipSelect" required></select></div>
+        <div class="field full"><label>Krótki opis</label><input name="short_description" maxlength="180" placeholder="Jedno zdanie wyświetlane na kafelku"></div>
+        <div class="field full"><label>Pełny opis *</label><textarea name="description" rows="7" required></textarea></div>
+        <div class="field full"><label>Zdrowie</label><textarea name="health_description" rows="3"></textarea></div>
+        <div class="checks full">
+          <label><input type="checkbox" name="vaccinated"> Zaszczepiony</label>
+          <label><input type="checkbox" name="dewormed"> Odrobaczony</label>
+          <label><input type="checkbox" name="neutered"> Wykastrowany</label>
+          <label><input type="checkbox" name="chipped"> Zaczipowany</label>
+          <label><input type="checkbox" name="urgent"> Pilna adopcja</label>
+        </div>
+        <div class="field"><label>Kontakt — imię *</label><input name="contact_name" required></div>
+        <div class="field"><label>E-mail *</label><input type="email" name="contact_email" required></div>
+        <div class="field"><label>Telefon</label><input name="contact_phone"></div>
+        <div class="field"><label>Fundacja / schronisko</label><input name="organization_name"></div>
+        <div class="field full"><label>Zdjęcie główne *</label><input type="file" name="image" accept="image/jpeg,image/png,image/webp" required><small>Maksymalnie 5 MB.</small></div>
+      </div>
+      <div id="submitMessage" class="message hidden"></div>
+      <button class="btn primary big" type="submit">Wyślij do akceptacji</button>
+    </form>
+  </section>
+
+  <section class="wrap page hidden" id="myView">
+    <div class="page-title"><h2>Moje zgłoszenia</h2><p>Sprawdzaj status ogłoszeń i powody ewentualnego odrzucenia.</p></div>
+    <div id="myCats" class="dashboard-list"></div>
+  </section>
+
+  <section class="wrap page hidden" id="adminView">
+    <div class="page-title"><h2>Panel administratora</h2><p>Akceptuj, odrzucaj i kontroluj wszystkie zgłoszenia.</p></div>
+    <div class="admin-tabs">
+      <button class="tab active" data-admin-filter="pending">Oczekujące</button>
+      <button class="tab" data-admin-filter="approved">Opublikowane</button>
+      <button class="tab" data-admin-filter="rejected">Odrzucone</button>
+    </div>
+    <div id="adminCats" class="dashboard-list"></div>
+  </section>
+
+  <section class="wrap page hidden" id="detailView"></section>
+
+  <section class="wrap page hidden" id="howView">
+    <div class="content-card card">
+      <h2>Jak działa KociDom?</h2>
+      <ol>
+        <li>Użytkownik zakłada bezpłatne konto.</li>
+        <li>Dodaje opis i zdjęcie kota.</li>
+        <li>Ogłoszenie otrzymuje status „Oczekuje”.</li>
+        <li>Administrator sprawdza je i zatwierdza albo odrzuca z podaniem powodu.</li>
+        <li>Zaakceptowane ogłoszenie pojawia się na stronie głównej.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<div class="modal hidden" id="authModal">
+  <div class="modal-card">
+    <button class="modal-close" id="closeAuth">×</button>
+    <h2 id="authTitle">Logowanie</h2>
+    <form id="authForm">
+      <div class="field"><label>E-mail</label><input type="email" name="email" required></div>
+      <div class="field"><label>Hasło</label><input type="password" name="password" minlength="6" required></div>
+      <div id="authMessage" class="message hidden"></div>
+      <button class="btn primary big full-btn" type="submit" id="authSubmit">Zaloguj się</button>
+    </form>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">KociDom • portal adopcji kotów</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

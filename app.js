@@ -1,0 +1,250 @@
+
+const C = window.KOCI_DOM_CONFIG || {};
+const configured = C.SUPABASE_URL && !C.SUPABASE_URL.includes("WKLEJ_") && C.SUPABASE_ANON_KEY && !C.SUPABASE_ANON_KEY.includes("WKLEJ_");
+const supabaseClient = configured ? window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY) : null;
+
+const voivodeships = ["dolnośląskie","kujawsko-pomorskie","lubelskie","lubuskie","łódzkie","małopolskie","mazowieckie","opolskie","podkarpackie","podlaskie","pomorskie","śląskie","świętokrzyskie","warmińsko-mazurskie","wielkopolskie","zachodniopomorskie"];
+let currentUser = null;
+let isAdmin = false;
+let authMode = "login";
+let publicCats = [];
+let adminFilter = "pending";
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = v => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
+const ageLabel = v => ({kociak:"Kociak",mlody:"Młody",dorosly:"Dorosły",senior:"Senior"}[v] || v || "");
+const sexLabel = v => ({kotka:"Kotka",kocur:"Kocur",nieznana:"Nieznana"}[v] || v || "");
+const statusLabel = v => ({pending:"Oczekuje",approved:"Opublikowane",rejected:"Odrzucone"}[v] || v || "");
+
+function showMessage(el, text, error=false) {
+  el.textContent = text; el.classList.remove("hidden","error");
+  if (error) el.classList.add("error");
+}
+function ensureConfigured() {
+  if (!configured) {
+    alert("Najpierw uzupełnij plik config.js danymi Project URL i anon public key z Supabase.");
+    return false;
+  }
+  return true;
+}
+function fillVoivodeships() {
+  const options = '<option value="">Wybierz</option>' + voivodeships.map(v=>`<option value="${v}">${v}</option>`).join("");
+  $("#voivodeshipSelect").innerHTML = options;
+  $("#voivodeshipFilter").innerHTML = '<option value="">Cała Polska</option>' + voivodeships.map(v=>`<option value="${v}">${v}</option>`).join("");
+}
+async function initAuth() {
+  if (!configured) { updateAuthUI(); return; }
+  const { data } = await supabaseClient.auth.getSession();
+  currentUser = data.session?.user || null;
+  await checkAdmin();
+  updateAuthUI();
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+    await checkAdmin();
+    updateAuthUI();
+    route();
+  });
+}
+async function checkAdmin() {
+  isAdmin = false;
+  if (!currentUser || !configured) return;
+  const { data, error } = await supabaseClient.rpc("is_admin");
+  if (!error) isAdmin = data === true;
+}
+function updateAuthUI() {
+  $("#loginBtn").classList.toggle("hidden", !!currentUser);
+  $("#registerBtn").classList.toggle("hidden", !!currentUser);
+  $("#logoutBtn").classList.toggle("hidden", !currentUser);
+  $$("[data-auth-only]").forEach(el=>el.classList.toggle("hidden", !currentUser));
+  $$("[data-admin-only]").forEach(el=>el.classList.toggle("hidden", !isAdmin));
+}
+function openAuth(mode) {
+  authMode = mode;
+  $("#authTitle").textContent = mode === "login" ? "Logowanie" : "Załóż konto";
+  $("#authSubmit").textContent = mode === "login" ? "Zaloguj się" : "Utwórz konto";
+  $("#authMessage").classList.add("hidden");
+  $("#authModal").classList.remove("hidden");
+}
+async function handleAuth(e) {
+  e.preventDefault();
+  if (!ensureConfigured()) return;
+  const f = new FormData(e.target);
+  const email = f.get("email"), password = f.get("password");
+  $("#authSubmit").disabled = true;
+  let result;
+  if (authMode === "login") result = await supabaseClient.auth.signInWithPassword({email,password});
+  else result = await supabaseClient.auth.signUp({email,password});
+  $("#authSubmit").disabled = false;
+  if (result.error) return showMessage($("#authMessage"), result.error.message, true);
+  if (authMode === "register" && !result.data.session) {
+    showMessage($("#authMessage"), "Konto utworzone. Sprawdź e-mail i potwierdź rejestrację.");
+  } else {
+    $("#authModal").classList.add("hidden");
+    location.hash = "#/";
+  }
+}
+function hideViews() {
+  ["homeView","submitView","myView","adminView","detailView","howView"].forEach(id=>$("#"+id).classList.add("hidden"));
+}
+async function route() {
+  const hash = location.hash || "#/";
+  hideViews();
+  if (hash.startsWith("#/kot/")) {
+    $("#detailView").classList.remove("hidden");
+    return loadDetail(hash.split("/")[2]);
+  }
+  if (hash === "#/dodaj") {
+    if (!currentUser) { openAuth("login"); location.hash="#/"; return; }
+    $("#submitView").classList.remove("hidden"); return;
+  }
+  if (hash === "#/moje") {
+    if (!currentUser) { openAuth("login"); location.hash="#/"; return; }
+    $("#myView").classList.remove("hidden"); return loadMyCats();
+  }
+  if (hash === "#/admin") {
+    if (!isAdmin) { location.hash="#/"; return; }
+    $("#adminView").classList.remove("hidden"); return loadAdminCats();
+  }
+  if (hash === "#/jak-to-dziala") { $("#howView").classList.remove("hidden"); return; }
+  $("#homeView").classList.remove("hidden");
+  return loadPublicCats();
+}
+async function loadPublicCats() {
+  if (!configured) {
+    $("#listingCount").textContent = "Połącz stronę z Supabase w pliku config.js.";
+    $("#catsGrid").innerHTML = demoCard();
+    return;
+  }
+  const {data,error} = await supabaseClient.from("cats").select("*").eq("moderation_status","approved").order("created_at",{ascending:false});
+  if (error) { $("#listingCount").textContent = "Błąd pobierania ogłoszeń."; return; }
+  publicCats = data || [];
+  renderPublicCats(publicCats);
+}
+function demoCard() {
+  return `<article class="cat-card"><div class="urgent">Tryb demonstracyjny</div><div style="height:260px;display:grid;place-items:center;font-size:110px;background:#eef1f4">🐈</div><div class="cat-body"><div class="cat-top"><h3>Przykładowy kot</h3><span class="badge">Demo</span></div><div class="chips"><span class="chip">Olsztyn</span><span class="chip">Kotka</span></div><p>Po wpisaniu danych w config.js pojawią się tutaj prawdziwe ogłoszenia z Supabase.</p></div></article>`;
+}
+function renderPublicCats(cats) {
+  $("#listingCount").textContent = `${cats.length} aktualnych ogłoszeń`;
+  $("#emptyState").classList.toggle("hidden", cats.length > 0);
+  $("#catsGrid").innerHTML = cats.map(catCard).join("");
+}
+function catCard(c) {
+  const img = c.main_image_url ? `<img src="${esc(c.main_image_url)}" alt="${esc(c.name)}">` : `<div style="height:260px;display:grid;place-items:center;font-size:100px;background:#eef1f4">🐈</div>`;
+  return `<article class="cat-card">
+    ${c.urgent ? '<span class="urgent">Pilna adopcja</span>' : ''}
+    ${img}
+    <div class="cat-body">
+      <div class="cat-top"><h3>${esc(c.name)}</h3><span class="badge">${esc(c.adoption_status==="reserved"?"Rezerwacja":c.adoption_status==="adopted"?"Adoptowany":"Do adopcji")}</span></div>
+      <div class="chips"><span class="chip">${esc(sexLabel(c.sex))}</span><span class="chip">${esc(c.age_description || ageLabel(c.age_group))}</span><span class="chip">${esc(c.city)}</span></div>
+      <p>${esc(c.short_description || c.description?.slice(0,150) || "")}</p>
+      <a class="card-link" href="#/kot/${c.id}">Poznaj mnie →</a>
+    </div>
+  </article>`;
+}
+function filterPublicCats() {
+  const q=$("#searchInput").value.toLowerCase().trim(), sex=$("#sexFilter").value, age=$("#ageFilter").value, v=$("#voivodeshipFilter").value;
+  renderPublicCats(publicCats.filter(c =>
+    (!q || [c.name,c.city,c.description,c.short_description].some(x=>(x||"").toLowerCase().includes(q))) &&
+    (!sex || c.sex===sex) && (!age || c.age_group===age) && (!v || c.voivodeship===v)
+  ));
+}
+async function loadDetail(id) {
+  if (!configured) return;
+  const {data,error}=await supabaseClient.from("cats").select("*").eq("id",id).single();
+  if (error || !data) { $("#detailView").innerHTML='<div class="empty">Nie znaleziono ogłoszenia.</div>'; return; }
+  const c=data;
+  $("#detailView").innerHTML=`<div class="detail">
+    ${c.main_image_url?`<img src="${esc(c.main_image_url)}" alt="${esc(c.name)}">`:`<div style="display:grid;place-items:center;font-size:130px;background:#eef1f4">🐈</div>`}
+    <div class="detail-body">
+      <span class="badge">${c.urgent?"Pilna adopcja":"Do adopcji"}</span>
+      <h2>${esc(c.name)}</h2>
+      <div class="chips"><span class="chip">${esc(sexLabel(c.sex))}</span><span class="chip">${esc(c.age_description||ageLabel(c.age_group))}</span><span class="chip">${esc(c.city)}, ${esc(c.voivodeship)}</span></div>
+      <div class="detail-description">${esc(c.description).replace(/\n/g,"<br>")}</div>
+      <div class="detail-info">
+        <div class="info-box"><strong>Szczepienia</strong><br>${c.vaccinated?"Tak":"Nie / brak danych"}</div>
+        <div class="info-box"><strong>Kastracja</strong><br>${c.neutered?"Tak":"Nie / brak danych"}</div>
+        <div class="info-box"><strong>Chip</strong><br>${c.chipped?"Tak":"Nie / brak danych"}</div>
+        <div class="info-box"><strong>Odrobaczenie</strong><br>${c.dewormed?"Tak":"Nie / brak danych"}</div>
+      </div>
+      ${c.health_description?`<p><strong>Zdrowie:</strong> ${esc(c.health_description)}</p>`:""}
+      <div class="contact-box"><strong>Kontakt w sprawie adopcji</strong><br>${esc(c.contact_name)}${c.organization_name?` — ${esc(c.organization_name)}`:""}<br><a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>${c.contact_phone?`<br><a href="tel:${esc(c.contact_phone)}">${esc(c.contact_phone)}</a>`:""}</div>
+    </div>
+  </div>`;
+}
+async function submitCat(e) {
+  e.preventDefault();
+  if (!ensureConfigured() || !currentUser) return;
+  const f=new FormData(e.target), image=f.get("image");
+  const msg=$("#submitMessage"); msg.classList.add("hidden");
+  const submit=e.target.querySelector('button[type="submit"]'); submit.disabled=true; submit.textContent="Wysyłanie…";
+  try {
+    if (!image || image.size===0) throw new Error("Dodaj zdjęcie kota.");
+    if (image.size>5*1024*1024) throw new Error("Zdjęcie przekracza 5 MB.");
+    const ext=(image.name.split(".").pop()||"jpg").toLowerCase();
+    const path=`${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    const up=await supabaseClient.storage.from("cat-images").upload(path,image,{cacheControl:"3600",upsert:false});
+    if (up.error) throw up.error;
+    const publicUrl=supabaseClient.storage.from("cat-images").getPublicUrl(path).data.publicUrl;
+    const payload={
+      user_id:currentUser.id,name:f.get("name"),sex:f.get("sex"),age_group:f.get("age_group"),
+      age_description:f.get("age_description")||null,city:f.get("city"),voivodeship:f.get("voivodeship"),
+      short_description:f.get("short_description")||null,description:f.get("description"),
+      health_description:f.get("health_description")||null,vaccinated:f.has("vaccinated"),dewormed:f.has("dewormed"),
+      neutered:f.has("neutered"),chipped:f.has("chipped"),urgent:f.has("urgent"),
+      contact_name:f.get("contact_name"),contact_email:f.get("contact_email"),contact_phone:f.get("contact_phone")||null,
+      organization_name:f.get("organization_name")||null,main_image_url:publicUrl,moderation_status:"pending",adoption_status:"available"
+    };
+    const ins=await supabaseClient.from("cats").insert(payload);
+    if (ins.error) throw ins.error;
+    e.target.reset(); showMessage(msg,"Ogłoszenie zostało wysłane do akceptacji.");
+  } catch(err) { showMessage(msg,err.message||"Nie udało się wysłać ogłoszenia.",true); }
+  submit.disabled=false; submit.textContent="Wyślij do akceptacji";
+}
+async function loadMyCats() {
+  const {data,error}=await supabaseClient.from("cats").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
+  if(error){$("#myCats").innerHTML='<div class="empty">Nie udało się pobrać zgłoszeń.</div>';return}
+  $("#myCats").innerHTML=(data||[]).length?(data||[]).map(dashItem).join(""):'<div class="empty">Nie masz jeszcze żadnych zgłoszeń.</div>';
+}
+function dashItem(c, admin=false) {
+  const badgeClass=c.moderation_status==="pending"?"pending":c.moderation_status==="rejected"?"rejected":"";
+  return `<article class="dash-item">
+    ${c.main_image_url?`<img src="${esc(c.main_image_url)}" alt="">`:`<div>🐈</div>`}
+    <div><h3>${esc(c.name)} <span class="badge ${badgeClass}">${esc(statusLabel(c.moderation_status))}</span></h3>
+      <div class="dash-meta">${esc(c.city)} • ${esc(c.contact_email)} • ${new Date(c.created_at).toLocaleDateString("pl-PL")}</div>
+      ${c.rejection_reason?`<div class="reason"><strong>Powód odrzucenia:</strong> ${esc(c.rejection_reason)}</div>`:""}
+    </div>
+    ${admin?`<div class="dash-actions">
+      ${c.moderation_status!=="approved"?`<button class="btn primary" onclick="moderate('${c.id}','approved')">Akceptuj</button>`:""}
+      ${c.moderation_status!=="rejected"?`<button class="btn danger" onclick="moderate('${c.id}','rejected')">Odrzuć</button>`:""}
+    </div>`:""}
+  </article>`;
+}
+async function loadAdminCats() {
+  const {data,error}=await supabaseClient.from("cats").select("*").eq("moderation_status",adminFilter).order("created_at",{ascending:false});
+  if(error){$("#adminCats").innerHTML='<div class="empty">Nie udało się pobrać zgłoszeń.</div>';return}
+  $("#adminCats").innerHTML=(data||[]).length?(data||[]).map(c=>dashItem(c,true)).join(""):'<div class="empty">Brak ogłoszeń w tej kategorii.</div>';
+}
+async function moderate(id,status) {
+  if(!isAdmin)return;
+  let reason=null;
+  if(status==="rejected"){ reason=prompt("Podaj powód odrzucenia:"); if(reason===null)return; }
+  const changes={moderation_status:status,rejection_reason:status==="rejected"?reason:null,approved_at:status==="approved"?new Date().toISOString():null};
+  const {error}=await supabaseClient.from("cats").update(changes).eq("id",id);
+  if(error) alert(error.message); else loadAdminCats();
+}
+window.moderate=moderate;
+
+$("#loginBtn").onclick=()=>openAuth("login");
+$("#registerBtn").onclick=()=>openAuth("register");
+$("#logoutBtn").onclick=async()=>{if(configured)await supabaseClient.auth.signOut();location.hash="#/"};
+$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");
+$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};
+$("#authForm").addEventListener("submit",handleAuth);
+$("#catForm").addEventListener("submit",submitCat);
+$("#filterBtn").onclick=filterPublicCats;
+$("#searchInput").addEventListener("input",filterPublicCats);
+$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});
+window.addEventListener("hashchange",route);
+fillVoivodeships();
+initAuth().then(route);
