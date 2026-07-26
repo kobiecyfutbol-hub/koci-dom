@@ -3,7 +3,7 @@ const configured = C.SUPABASE_URL && !C.SUPABASE_URL.includes("WKLEJ_") && C.SUP
 const db = configured ? window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY) : null;
 
 const voivodeships = ["dolnośląskie","kujawsko-pomorskie","lubelskie","lubuskie","łódzkie","małopolskie","mazowieckie","opolskie","podkarpackie","podlaskie","pomorskie","śląskie","świętokrzyskie","warmińsko-mazurskie","wielkopolskie","zachodniopomorskie"];
-let currentUser = null, isAdmin = false, authMode = "login", publicCats = [], adminFilter = "pending";
+let currentUser = null, isAdmin = false, authMode = "login", publicCats = [], favoriteIds = new Set(), adminFilter = "pending", galleryImages = [], galleryIndex = 0;
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = v => String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[ch]));
@@ -13,14 +13,14 @@ const statusLabel = v => ({pending:"Oczekuje",approved:"Opublikowane",rejected:"
 
 function msg(el,text,error=false){el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error")}
 function fillVoivodeships(){const opts='<option value="">Wybierz</option>'+voivodeships.map(v=>`<option value="${v}">${v}</option>`).join("");$("#voivodeshipSelect").innerHTML=opts;$("#voivodeshipFilter").innerHTML='<option value="">Cała Polska</option>'+voivodeships.map(v=>`<option value="${v}">${v}</option>`).join("");const a=$("#adminVoivodeshipSelect");if(a)a.innerHTML=opts}
-async function initAuth(){if(!configured){updateAuthUI();return}const {data}=await db.auth.getSession();currentUser=data.session?.user||null;await checkAdmin();updateAuthUI();db.auth.onAuthStateChange(async(_e,s)=>{currentUser=s?.user||null;await checkAdmin();updateAuthUI();route()})}
+async function initAuth(){if(!configured){updateAuthUI();return}const {data}=await db.auth.getSession();currentUser=data.session?.user||null;await checkAdmin();updateAuthUI();db.auth.onAuthStateChange(async(_e,s)=>{currentUser=s?.user||null;await checkAdmin();await loadFavoriteIds();updateAuthUI();route()})}
 async function checkAdmin(){isAdmin=false;if(!currentUser||!configured)return;const {data,error}=await db.rpc("is_admin");if(!error)isAdmin=data===true}
 function updateAuthUI(){$("#loginBtn").classList.toggle("hidden",!!currentUser);$("#registerBtn").classList.toggle("hidden",!!currentUser);$("#logoutBtn").classList.toggle("hidden",!currentUser);$("#userEmail").classList.toggle("hidden",!currentUser);$("#userEmail").textContent=currentUser?.email||"";$$("[data-auth-only]").forEach(e=>e.classList.toggle("hidden",!currentUser));$$("[data-admin-only]").forEach(e=>e.classList.toggle("hidden",!isAdmin))}
 function openAuth(mode){authMode=mode;$("#authTitle").textContent=mode==="login"?"Logowanie":"Załóż konto";$("#authSubmit").textContent=mode==="login"?"Zaloguj się":"Utwórz konto";$("#authMessage").classList.add("hidden");$("#authModal").classList.remove("hidden")}
 async function handleAuth(e){e.preventDefault();const f=new FormData(e.target),email=f.get("email"),password=f.get("password");$("#authSubmit").disabled=true;const r=authMode==="login"?await db.auth.signInWithPassword({email,password}):await db.auth.signUp({email,password});$("#authSubmit").disabled=false;if(r.error)return msg($("#authMessage"),r.error.message,true);if(authMode==="register"&&!r.data.session)msg($("#authMessage"),"Konto utworzone. Potwierdź adres e-mail.");else{$("#authModal").classList.add("hidden");location.hash="#/"}}
-function hideViews(){["homeView","submitView","myView","adminView","detailView","howView"].forEach(id=>$("#"+id).classList.add("hidden"))}
-async function route(){const h=location.hash||"#/";hideViews();if(h.startsWith("#/kot/")){$("#detailView").classList.remove("hidden");return loadDetail(h.split("/")[2])}if(h==="#/dodaj"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#submitView").classList.remove("hidden");return}if(h==="#/moje"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#myView").classList.remove("hidden");return loadMyCats()}if(h==="#/admin"){if(!isAdmin){location.hash="#/";return}$("#adminView").classList.remove("hidden");return loadAdminCats()}if(h==="#/jak-to-dziala"){$("#howView").classList.remove("hidden");return}$("#homeView").classList.remove("hidden");return loadPublicCats()}
-async function loadPublicCats(){if(!configured)return;const {data,error}=await db.from("cats").select("*").eq("moderation_status","approved").eq("adoption_status","available").order("created_at",{ascending:false});if(error){$("#listingCount").textContent="Błąd pobierania ogłoszeń.";console.error(error);return}publicCats=data||[];renderPublicCats(publicCats)}
+function hideViews(){["homeView","submitView","myView","favoritesView","adminView","detailView","howView"].forEach(id=>$("#"+id).classList.add("hidden"))}
+async function route(){const h=location.hash||"#/";hideViews();if(h.startsWith("#/kot/")){$("#detailView").classList.remove("hidden");return loadDetail(h.split("/")[2])}if(h==="#/dodaj"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#submitView").classList.remove("hidden");return}if(h==="#/moje"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#myView").classList.remove("hidden");return loadMyCats()}if(h==="#/ulubione"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#favoritesView").classList.remove("hidden");return loadFavoritesView()}if(h==="#/admin"){if(!isAdmin){location.hash="#/";return}$("#adminView").classList.remove("hidden");return loadAdminCats()}if(h==="#/jak-to-dziala"){$("#howView").classList.remove("hidden");return}$("#homeView").classList.remove("hidden");await loadStats();return loadPublicCats()}
+async function loadPublicCats(){if(!configured)return;await loadFavoriteIds();const {data,error}=await db.from("cats").select("*").eq("moderation_status","approved").eq("adoption_status","available").order("created_at",{ascending:false});if(error){$("#listingCount").textContent="Błąd pobierania ogłoszeń.";console.error(error);return}publicCats=data||[];renderPublicCats(publicCats)}
 function renderPublicCats(cats){$("#listingCount").textContent=`${cats.length} aktualnych ogłoszeń`;$("#emptyState").classList.toggle("hidden",cats.length>0);$("#catsGrid").innerHTML=cats.map(catCard).join("")}
 function fundingBlock(c, compact=false){
   const goal=Number(c.funding_goal||0), raised=Number(c.funding_raised||0);
@@ -31,10 +31,92 @@ function fundingBlock(c, compact=false){
   const button=c.donation_url?`<a class="btn support-btn" href="${esc(c.donation_url)}" target="_blank" rel="noopener noreferrer">❤️ Wesprzyj ${esc(c.name)}</a>`:"";
   return `<div class="funding-box ${compact?"compact":""}"><div class="funding-title"><span>❤️</span><div><small>Pomoc finansowa</small><strong>${title}</strong></div></div>${amounts}${button}</div>`;
 }
-function catCard(c){const img=c.main_image_url?`<img src="${esc(c.main_image_url)}" alt="${esc(c.name)}" loading="lazy">`:`<div class="cat-placeholder">🐈</div>`;return `<article class="cat-card"><div class="cat-media">${c.urgent?'<span class="urgent">Pilna adopcja</span>':""}${img}<span class="location-pill">📍 ${esc(c.city)}</span></div><div class="cat-body"><div class="cat-top"><h3>${esc(c.name)}</h3><span class="badge">Szuka domu</span></div><div class="chips"><span class="chip">${esc(sexLabel(c.sex))}</span><span class="chip">${esc(c.age_description||ageLabel(c.age_group))}</span><span class="chip">${c.neutered?"Po kastracji":"Kastracja: brak danych"}</span></div><p>${esc(c.short_description||"")}</p>${fundingBlock(c,true)}<a class="card-link" href="#/kot/${c.id}">Zobacz profil kota <span>→</span></a></div></article>`}
+function favoriteButton(c){
+  const active=favoriteIds.has(c.id);
+  return `<button class="favorite-btn ${active?"active":""}" type="button" onclick="toggleFavorite('${c.id}',event)" aria-label="${active?"Usuń z ulubionych":"Dodaj do ulubionych"}" title="${active?"Usuń z ulubionych":"Dodaj do ulubionych"}">${active?"♥":"♡"}</button>`;
+}
+function catCard(c){
+  const img=c.main_image_url?`<img src="${esc(c.main_image_url)}" alt="${esc(c.name)}" loading="lazy">`:`<div class="cat-placeholder">🐈</div>`;
+  const status=({available:"Szuka domu",reserved:"Rezerwacja",adopted:"Adoptowany"}[c.adoption_status]||"Szuka domu");
+  return `<article class="cat-card"><div class="cat-media">${c.urgent?'<span class="urgent">Pilna adopcja</span>':""}${favoriteButton(c)}${img}<span class="location-pill">📍 ${esc(c.city)}</span></div><div class="cat-body"><div class="cat-top"><h3>${esc(c.name)}</h3><span class="badge">${esc(status)}</span></div><div class="chips"><span class="chip">${esc(sexLabel(c.sex))}</span><span class="chip">${esc(c.age_description||ageLabel(c.age_group))}</span><span class="chip">${c.neutered?"Po kastracji":"Kastracja: brak danych"}</span></div><p>${esc(c.short_description||"")}</p>${fundingBlock(c,true)}<a class="card-link" href="#/kot/${c.id}">Zobacz profil kota <span>→</span></a></div></article>`;
+}
+
+async function loadFavoriteIds(){
+  favoriteIds=new Set();
+  if(!currentUser||!configured)return;
+  const {data,error}=await db.from("favorites").select("cat_id").eq("user_id",currentUser.id);
+  if(!error)(data||[]).forEach(row=>favoriteIds.add(row.cat_id));
+}
+async function toggleFavorite(catId,event){
+  event?.preventDefault();event?.stopPropagation();
+  if(!currentUser){openAuth("login");return}
+  const active=favoriteIds.has(catId);
+  if(active){
+    const {error}=await db.from("favorites").delete().eq("user_id",currentUser.id).eq("cat_id",catId);
+    if(error)return alert(error.message);
+    favoriteIds.delete(catId);
+  }else{
+    const {error}=await db.from("favorites").insert({user_id:currentUser.id,cat_id:catId});
+    if(error)return alert(error.message);
+    favoriteIds.add(catId);
+  }
+  document.querySelectorAll(`.favorite-btn[onclick*="${catId}"]`).forEach(btn=>{
+    btn.classList.toggle("active",!active);btn.textContent=!active?"♥":"♡";
+    btn.title=!active?"Usuń z ulubionych":"Dodaj do ulubionych";
+  });
+  if(location.hash==="#/ulubione"&&active)loadFavoritesView();
+  loadStats();
+}
+window.toggleFavorite=toggleFavorite;
+async function loadFavoritesView(){
+  await loadFavoriteIds();
+  if(!favoriteIds.size){
+    $("#favoriteCats").innerHTML="";
+    $("#favoriteEmpty").classList.remove("hidden");
+    return;
+  }
+  const {data,error}=await db.from("cats").select("*").in("id",[...favoriteIds]).eq("moderation_status","approved").order("created_at",{ascending:false});
+  if(error){$("#favoriteCats").innerHTML='<div class="empty">Nie udało się pobrać ulubionych.</div>';return}
+  $("#favoriteEmpty").classList.toggle("hidden",(data||[]).length>0);
+  $("#favoriteCats").innerHTML=(data||[]).map(catCard).join("");
+}
+async function loadStats(){
+  if(!configured)return;
+  const [available,adopted,favorites,raised]=await Promise.all([
+    db.from("cats").select("*",{count:"exact",head:true}).eq("moderation_status","approved").eq("adoption_status","available"),
+    db.from("cats").select("*",{count:"exact",head:true}).eq("moderation_status","approved").eq("adoption_status","adopted"),
+    db.from("favorites").select("*",{count:"exact",head:true}),
+    db.from("cats").select("funding_raised").eq("moderation_status","approved")
+  ]);
+  $("#statAvailable").textContent=(available.count||0).toLocaleString("pl-PL");
+  $("#statAdopted").textContent=(adopted.count||0).toLocaleString("pl-PL");
+  $("#statFavorites").textContent=(favorites.count||0).toLocaleString("pl-PL");
+  const total=(raised.data||[]).reduce((sum,row)=>sum+Number(row.funding_raised||0),0);
+  $("#statRaised").textContent=Math.round(total).toLocaleString("pl-PL");
+}
+
 function filterCats(){const q=$("#searchInput").value.toLowerCase().trim(),sex=$("#sexFilter").value,age=$("#ageFilter").value,v=$("#voivodeshipFilter").value,sort=$("#sortFilter").value;let out=publicCats.filter(c=>(!q||[c.name,c.city,c.description,c.short_description].some(x=>(x||"").toLowerCase().includes(q)))&&(!sex||c.sex===sex)&&(!age||c.age_group===age)&&(!v||c.voivodeship===v));if(sort==="oldest")out.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));if(sort==="newest")out.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));if(sort==="name")out.sort((a,b)=>(a.name||"").localeCompare(b.name||"","pl"));renderPublicCats(out)}
 function clearFilters(){$("#searchInput").value="";$("#sexFilter").value="";$("#ageFilter").value="";$("#voivodeshipFilter").value="";$("#sortFilter").value="newest";renderPublicCats([...publicCats])}
-async function loadDetail(id){const {data:c,error}=await db.from("cats").select("*").eq("id",id).eq("moderation_status","approved").single();if(error||!c){$("#detailView").innerHTML='<div class="empty">Nie znaleziono ogłoszenia.</div>';return}document.title=`${c.name} — kot do adopcji | KociDom`;$("#detailView").innerHTML=`<div class="detail"><div class="detail-photo">${c.main_image_url?`<img src="${esc(c.main_image_url)}" alt="${esc(c.name)}">`:`<div class="detail-placeholder">🐈</div>`}${c.urgent?'<span class="urgent">Pilna adopcja</span>':""}</div><div class="detail-body"><span class="badge">Szuka domu</span><h2>${esc(c.name)}</h2><div class="chips"><span class="chip">${esc(sexLabel(c.sex))}</span><span class="chip">${esc(c.age_description||ageLabel(c.age_group))}</span><span class="chip">📍 ${esc(c.city)}, ${esc(c.voivodeship)}</span></div><p class="lead">${esc(c.short_description||"")}</p>${fundingBlock(c)}<div class="detail-description">${esc(c.description).replace(/\n/g,"<br>")}</div><h3 class="section-label">Zdrowie i przygotowanie do adopcji</h3><div class="detail-info"><div class="info-box"><strong>${c.vaccinated?"✓":"—"} Szczepienia</strong><br>${c.vaccinated?"Wykonane":"Brak danych"}</div><div class="info-box"><strong>${c.neutered?"✓":"—"} Kastracja</strong><br>${c.neutered?"Wykonana":"Brak danych"}</div><div class="info-box"><strong>${c.chipped?"✓":"—"} Chip</strong><br>${c.chipped?"Zaczipowany":"Brak danych"}</div><div class="info-box"><strong>${c.dewormed?"✓":"—"} Odrobaczenie</strong><br>${c.dewormed?"Wykonane":"Brak danych"}</div></div>${c.health_description?`<div class="health-note"><strong>Dodatkowe informacje zdrowotne</strong><p>${esc(c.health_description)}</p></div>`:""}<div class="contact-box"><small>Kontakt w sprawie adopcji</small><strong>${esc(c.contact_name)}${c.organization_name?` — ${esc(c.organization_name)}`:""}</strong><a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>${c.contact_phone?`<a href="tel:${esc(c.contact_phone)}">${esc(c.contact_phone)}</a>`:""}</div></div></div>`}
+function galleryMarkup(c){
+  const images=[c.main_image_url,...(Array.isArray(c.additional_image_urls)?c.additional_image_urls:[])].filter(Boolean);
+  if(!images.length)return `<div class="detail-placeholder">🐈</div>`;
+  const main=`<button class="detail-main-photo" type="button" onclick='openGallery(${JSON.stringify(images)},0)'><img src="${esc(images[0])}" alt="${esc(c.name)}"></button>`;
+  const thumbs=images.length>1?`<div class="gallery-thumbs">${images.slice(0,5).map((url,i)=>`<button type="button" onclick='openGallery(${JSON.stringify(images)},${i})'><img src="${esc(url)}" alt="${esc(c.name)} — zdjęcie ${i+1}">${i===4&&images.length>5?`<span>+${images.length-5}</span>`:""}</button>`).join("")}</div>`:"";
+  return main+thumbs;
+}
+function openGallery(images,index=0){galleryImages=images||[];galleryIndex=index;renderGallery();$("#galleryLightbox").classList.remove("hidden")}
+function renderGallery(){if(!galleryImages.length)return;$("#galleryLightboxImage").src=galleryImages[galleryIndex];$("#galleryCounter").textContent=`${galleryIndex+1} / ${galleryImages.length}`}
+function closeGallery(){$("#galleryLightbox").classList.add("hidden")}
+function changeGallery(step){if(!galleryImages.length)return;galleryIndex=(galleryIndex+step+galleryImages.length)%galleryImages.length;renderGallery()}
+window.openGallery=openGallery;
+async function loadDetail(id){
+  await loadFavoriteIds();
+  const {data:c,error}=await db.from("cats").select("*").eq("id",id).eq("moderation_status","approved").single();
+  if(error||!c){$("#detailView").innerHTML='<div class="empty">Nie znaleziono ogłoszenia.</div>';return}
+  document.title=`${c.name} — kot do adopcji | KociDom`;
+  const status=({available:"Szuka domu",reserved:"Rezerwacja",adopted:"Adoptowany"}[c.adoption_status]||"Szuka domu");
+  $("#detailView").innerHTML=`<div class="detail"><div class="detail-photo">${galleryMarkup(c)}${c.urgent?'<span class="urgent">Pilna adopcja</span>':""}</div><div class="detail-body"><div class="detail-heading-row"><span class="badge">${esc(status)}</span>${favoriteButton(c)}</div><h2>${esc(c.name)}</h2><div class="chips"><span class="chip">${esc(sexLabel(c.sex))}</span><span class="chip">${esc(c.age_description||ageLabel(c.age_group))}</span><span class="chip">📍 ${esc(c.city)}, ${esc(c.voivodeship)}</span></div><p class="lead">${esc(c.short_description||"")}</p>${fundingBlock(c)}<div class="detail-description">${esc(c.description).replace(/\n/g,"<br>")}</div><h3 class="section-label">Zdrowie i przygotowanie do adopcji</h3><div class="detail-info"><div class="info-box"><strong>${c.vaccinated?"✓":"—"} Szczepienia</strong><br>${c.vaccinated?"Wykonane":"Brak danych"}</div><div class="info-box"><strong>${c.neutered?"✓":"—"} Kastracja</strong><br>${c.neutered?"Wykonana":"Brak danych"}</div><div class="info-box"><strong>${c.chipped?"✓":"—"} Chip</strong><br>${c.chipped?"Zaczipowany":"Brak danych"}</div><div class="info-box"><strong>${c.dewormed?"✓":"—"} Odrobaczenie</strong><br>${c.dewormed?"Wykonane":"Brak danych"}</div></div>${c.health_description?`<div class="health-note"><strong>Dodatkowe informacje zdrowotne</strong><p>${esc(c.health_description)}</p></div>`:""}<div class="contact-box"><small>Kontakt w sprawie adopcji</small><strong>${esc(c.contact_name)}${c.organization_name?` — ${esc(c.organization_name)}`:""}</strong><a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>${c.contact_phone?`<a href="tel:${esc(c.contact_phone)}">${esc(c.contact_phone)}</a>`:""}</div></div></div>`;
+}
 async function submitCat(e){e.preventDefault();const f=new FormData(e.target),image=f.get("image"),button=e.target.querySelector('button[type="submit"]');button.disabled=true;button.textContent="Wysyłanie…";try{if(!image||!image.size)throw new Error("Dodaj zdjęcie kota.");if(image.size>5*1024*1024)throw new Error("Zdjęcie przekracza 5 MB.");const ext=(image.name.split(".").pop()||"jpg").toLowerCase(),path=`${currentUser.id}/${crypto.randomUUID()}.${ext}`;const up=await db.storage.from("cat-images").upload(path,image,{cacheControl:"3600",upsert:false});if(up.error)throw up.error;const url=db.storage.from("cat-images").getPublicUrl(path).data.publicUrl;const payload={user_id:currentUser.id,name:f.get("name"),sex:f.get("sex"),age_group:f.get("age_group"),age_description:f.get("age_description")||null,city:f.get("city"),voivodeship:f.get("voivodeship"),short_description:f.get("short_description"),description:f.get("description"),health_description:f.get("health_description")||null,vaccinated:f.has("vaccinated"),dewormed:f.has("dewormed"),neutered:f.has("neutered"),chipped:f.has("chipped"),urgent:f.has("urgent"),contact_name:f.get("contact_name"),contact_email:f.get("contact_email"),contact_phone:f.get("contact_phone")||null,organization_name:f.get("organization_name")||null,main_image_url:url,moderation_status:"pending",adoption_status:"available"};const ins=await db.from("cats").insert(payload);if(ins.error)throw ins.error;e.target.reset();$("#imagePreview").classList.add("hidden");msg($("#submitMessage"),"Ogłoszenie zostało wysłane do akceptacji.")}catch(err){msg($("#submitMessage"),err.message||"Nie udało się wysłać ogłoszenia.",true)}button.disabled=false;button.textContent="Wyślij do akceptacji"}
 async function loadMyCats(){const {data,error}=await db.from("cats").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});$("#myCats").innerHTML=error?'<div class="empty">Nie udało się pobrać zgłoszeń.</div>':(data||[]).length?(data||[]).map(c=>dashItem(c,false)).join(""):'<div class="empty">Nie masz jeszcze żadnych zgłoszeń.</div>'}
 function dashItem(c,admin){const cls=c.moderation_status==="pending"?"pending":c.moderation_status==="rejected"?"rejected":"";const fundingActive=Boolean(c.donation_url||Number(c.funding_goal||0)>0);const adoptionText=({available:"Szuka domu",reserved:"Rezerwacja",adopted:"Adoptowany"}[c.adoption_status]||c.adoption_status||"");return `<article class="dash-item">${c.main_image_url?`<img src="${esc(c.main_image_url)}" alt="">`:"🐈"}<div><h3>${esc(c.name)} <span class="badge ${cls}">${esc(statusLabel(c.moderation_status))}</span>${fundingActive?'<span class="badge funding-badge">❤️ Pomoc aktywna</span>':""}</h3><div class="dash-meta">${esc(c.city)} • ${esc(c.contact_email)} • ${new Date(c.created_at).toLocaleDateString("pl-PL")} • ${esc(adoptionText)}</div>${c.rejection_reason?`<div class="reason"><strong>Powód odrzucenia:</strong> ${esc(c.rejection_reason)}</div>`:""}</div>${admin?`<div class="dash-actions"><button class="btn secondary" onclick="openAdminEdit('${c.id}')">Edytuj</button>${c.moderation_status!=="approved"?`<button class="btn primary" onclick="moderate('${c.id}','approved')">Akceptuj</button>`:""}${c.moderation_status!=="rejected"?`<button class="btn danger" onclick="moderate('${c.id}','rejected')">Odrzuć</button>`:""}</div>`:""}</article>`}
@@ -48,7 +130,7 @@ async function openAdminEdit(id){
   if(error||!c){alert(error?.message||"Nie znaleziono kota.");return}
   const form=$("#adminEditForm");
   ["id","name","sex","age_group","age_description","city","voivodeship","short_description","description","health_description","main_image_url","contact_name","contact_email","contact_phone","organization_name","moderation_status","adoption_status","rejection_reason","funding_title","funding_goal","funding_raised","donation_url"].forEach(n=>setFormValue(form,n,c[n]));
-  ["vaccinated","dewormed","neutered","chipped","urgent"].forEach(n=>setFormValue(form,n,c[n]));
+  ["vaccinated","dewormed","neutered","chipped","urgent"].forEach(n=>setFormValue(form,n,c[n]));setFormValue(form,"additional_image_urls",(Array.isArray(c.additional_image_urls)?c.additional_image_urls:[]).join("\n"));
   $("#fundingEnabled").checked=Boolean(c.donation_url||c.funding_title||Number(c.funding_goal||0)>0);
   toggleFundingFields();$("#adminEditMessage").classList.add("hidden");$("#adminEditModal").classList.remove("hidden")
 }
@@ -68,7 +150,7 @@ async function saveAdminEdit(e){
     age_description:f.get("age_description").trim()||null,city:f.get("city").trim(),
     voivodeship:f.get("voivodeship"),short_description:f.get("short_description").trim(),
     description:f.get("description").trim(),health_description:f.get("health_description").trim()||null,
-    main_image_url:f.get("main_image_url").trim()||null,vaccinated:f.has("vaccinated"),
+    main_image_url:f.get("main_image_url").trim()||null,additional_image_urls:f.get("additional_image_urls").split("\n").map(v=>v.trim()).filter(Boolean).slice(0,12),vaccinated:f.has("vaccinated"),
     dewormed:f.has("dewormed"),neutered:f.has("neutered"),chipped:f.has("chipped"),urgent:f.has("urgent"),
     contact_name:f.get("contact_name").trim(),contact_email:f.get("contact_email").trim(),
     contact_phone:f.get("contact_phone").trim()||null,organization_name:f.get("organization_name").trim()||null,
@@ -87,4 +169,4 @@ async function saveAdminEdit(e){
 window.openAdminEdit=openAdminEdit;
 
 async function moderate(id,status){let reason=null;if(status==="rejected"){reason=prompt("Podaj powód odrzucenia:");if(reason===null)return}const {error}=await db.from("cats").update({moderation_status:status,rejection_reason:status==="rejected"?reason:null,approved_at:status==="approved"?new Date().toISOString():null}).eq("id",id);if(error)alert(error.message);else loadAdminCats()}window.moderate=moderate;
-$("#closeAdminEdit").onclick=closeAdminEdit;$("#cancelAdminEdit").onclick=closeAdminEdit;$("#adminEditModal").onclick=e=>{if(e.target.id==="adminEditModal")closeAdminEdit()};$("#adminEditForm").addEventListener("submit",saveAdminEdit);$("#fundingEnabled").addEventListener("change",toggleFundingFields);$("#loginBtn").onclick=()=>openAuth("login");$("#registerBtn").onclick=()=>openAuth("register");$("#logoutBtn").onclick=async()=>{await db.auth.signOut();location.hash="#/"};$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};$("#authForm").addEventListener("submit",handleAuth);$("#catForm").addEventListener("submit",submitCat);$("#filterBtn").onclick=filterCats;$("#clearFilterBtn").onclick=clearFilters;$("#searchInput").addEventListener("input",filterCats);$("#sortFilter").addEventListener("change",filterCats);$("#imageInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);$("#imagePreview").innerHTML=`<img src="${url}" alt="Podgląd">`;$("#imagePreview").classList.remove("hidden")});$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});window.addEventListener("hashchange",()=>{document.title="KociDom — koty do adopcji";route()});fillVoivodeships();initAuth().then(route);
+$("#closeGallery").onclick=closeGallery;$("#galleryPrev").onclick=()=>changeGallery(-1);$("#galleryNext").onclick=()=>changeGallery(1);$("#galleryLightbox").onclick=e=>{if(e.target.id==="galleryLightbox")closeGallery()};document.addEventListener("keydown",e=>{if($("#galleryLightbox").classList.contains("hidden"))return;if(e.key==="Escape")closeGallery();if(e.key==="ArrowLeft")changeGallery(-1);if(e.key==="ArrowRight")changeGallery(1)});$("#closeAdminEdit").onclick=closeAdminEdit;$("#cancelAdminEdit").onclick=closeAdminEdit;$("#adminEditModal").onclick=e=>{if(e.target.id==="adminEditModal")closeAdminEdit()};$("#adminEditForm").addEventListener("submit",saveAdminEdit);$("#fundingEnabled").addEventListener("change",toggleFundingFields);$("#loginBtn").onclick=()=>openAuth("login");$("#registerBtn").onclick=()=>openAuth("register");$("#logoutBtn").onclick=async()=>{await db.auth.signOut();location.hash="#/"};$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};$("#authForm").addEventListener("submit",handleAuth);$("#catForm").addEventListener("submit",submitCat);$("#filterBtn").onclick=filterCats;$("#clearFilterBtn").onclick=clearFilters;$("#searchInput").addEventListener("input",filterCats);$("#sortFilter").addEventListener("change",filterCats);$("#imageInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);$("#imagePreview").innerHTML=`<img src="${url}" alt="Podgląd">`;$("#imagePreview").classList.remove("hidden")});$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});window.addEventListener("hashchange",()=>{document.title="KociDom — koty do adopcji";route()});fillVoivodeships();initAuth().then(route);
