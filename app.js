@@ -16,8 +16,76 @@ function fillVoivodeships(){const opts='<option value="">Wybierz</option>'+voivo
 async function initAuth(){if(!configured){updateAuthUI();return}const {data}=await db.auth.getSession();currentUser=data.session?.user||null;await checkAdmin();updateAuthUI();db.auth.onAuthStateChange(async(_e,s)=>{currentUser=s?.user||null;await checkAdmin();await loadFavoriteIds();updateAuthUI();route()})}
 async function checkAdmin(){isAdmin=false;if(!currentUser||!configured)return;const {data,error}=await db.rpc("is_admin");if(!error)isAdmin=data===true}
 function updateAuthUI(){$("#loginBtn").classList.toggle("hidden",!!currentUser);$("#registerBtn").classList.toggle("hidden",!!currentUser);$("#logoutBtn").classList.toggle("hidden",!currentUser);$("#userEmail").classList.toggle("hidden",!currentUser);$("#userEmail").textContent=currentUser?.email||"";$$("[data-auth-only]").forEach(e=>e.classList.toggle("hidden",!currentUser));$$("[data-admin-only]").forEach(e=>e.classList.toggle("hidden",!isAdmin))}
-function openAuth(mode){authMode=mode;$("#authTitle").textContent=mode==="login"?"Logowanie":"Załóż konto";$("#authSubmit").textContent=mode==="login"?"Zaloguj się":"Utwórz konto";$("#authMessage").classList.add("hidden");$("#authModal").classList.remove("hidden")}
-async function handleAuth(e){e.preventDefault();const f=new FormData(e.target),email=f.get("email"),password=f.get("password");$("#authSubmit").disabled=true;const r=authMode==="login"?await db.auth.signInWithPassword({email,password}):await db.auth.signUp({email,password});$("#authSubmit").disabled=false;if(r.error)return msg($("#authMessage"),r.error.message,true);if(authMode==="register"&&!r.data.session)msg($("#authMessage"),"Konto utworzone. Potwierdź adres e-mail.");else{$("#authModal").classList.add("hidden");location.hash="#/"}}
+function openAuth(mode){
+  authMode=mode;
+  $("#authTitle").textContent=mode==="login"?"Logowanie":"Załóż konto";
+  $("#authSubmit").textContent=mode==="login"?"Zaloguj się":"Utwórz konto";
+  $("#authMessage").classList.add("hidden");
+  $("#resendConfirmationBtn").classList.add("hidden");
+  $("#authModal").classList.remove("hidden")
+}
+function authRedirectUrl(){
+  return `${window.location.origin}${window.location.pathname}`;
+}
+async function handleAuth(e){
+  e.preventDefault();
+  const f=new FormData(e.target),email=f.get("email").trim(),password=f.get("password");
+  $("#authSubmit").disabled=true;
+  const r=authMode==="login"
+    ?await db.auth.signInWithPassword({email,password})
+    :await db.auth.signUp({email,password,options:{emailRedirectTo:authRedirectUrl()}});
+  $("#authSubmit").disabled=false;
+  if(r.error){
+    if(authMode==="login"&&/email not confirmed/i.test(r.error.message||"")){
+      $("#resendConfirmationBtn").classList.remove("hidden");
+      $("#resendConfirmationBtn").dataset.email=email;
+      return msg($("#authMessage"),"Adres e-mail nie został jeszcze potwierdzony. Kliknij przycisk poniżej, aby wysłać nową wiadomość.",true)
+    }
+    return msg($("#authMessage"),translateAuthError(r.error.message),true)
+  }
+  if(authMode==="register"&&!r.data.session){
+    $("#resendConfirmationBtn").classList.remove("hidden");
+    $("#resendConfirmationBtn").dataset.email=email;
+    msg($("#authMessage"),"Konto zostało utworzone. Sprawdź skrzynkę e-mail i kliknij link potwierdzający.")
+  }else{
+    $("#authModal").classList.add("hidden");
+    location.hash="#/"
+  }
+}
+function translateAuthError(text=""){
+  const t=text.toLowerCase();
+  if(t.includes("invalid login credentials"))return "Nieprawidłowy e-mail lub hasło.";
+  if(t.includes("user already registered"))return "Konto z tym adresem e-mail już istnieje.";
+  if(t.includes("password should be"))return "Hasło jest zbyt krótkie.";
+  if(t.includes("email rate limit"))return "Wysłano zbyt wiele wiadomości. Spróbuj ponownie za kilka minut.";
+  return text||"Wystąpił błąd. Spróbuj ponownie."
+}
+async function resendConfirmation(){
+  const email=$("#resendConfirmationBtn").dataset.email||$("#authForm").elements.email.value.trim();
+  if(!email)return msg($("#authMessage"),"Najpierw wpisz adres e-mail.",true);
+  $("#resendConfirmationBtn").disabled=true;
+  const {error}=await db.auth.resend({type:"signup",email,options:{emailRedirectTo:authRedirectUrl()}});
+  $("#resendConfirmationBtn").disabled=false;
+  if(error)return msg($("#authMessage"),translateAuthError(error.message),true);
+  msg($("#authMessage"),"Nowy link potwierdzający został wysłany. Sprawdź także folder Spam.")
+}
+function showAuthCallbackMessage(){
+  const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,""));
+  const queryParams=new URLSearchParams(window.location.search);
+  const error=queryParams.get("error_description")||hashParams.get("error_description");
+  const type=queryParams.get("type")||hashParams.get("type");
+  if(error){
+    openAuth("login");
+    msg($("#authMessage"),decodeURIComponent(error.replace(/\+/g," ")),true);
+    return
+  }
+  if(type==="signup"||queryParams.get("code")||hashParams.get("access_token")){
+    setTimeout(()=>{
+      openAuth("login");
+      msg($("#authMessage"),"Adres e-mail został potwierdzony. Możesz się teraz zalogować.")
+    },300)
+  }
+}
 function hideViews(){["homeView","submitView","myView","favoritesView","organizationsView","organizationDetailView","matcherView","adminView","detailView","howView"].forEach(id=>$("#"+id).classList.add("hidden"))}
 async function route(){const h=location.hash||"#/";hideViews();if(h.startsWith("#/kot/")){$("#detailView").classList.remove("hidden");return loadDetail(h.split("/")[2])}if(h.startsWith("#/organizacja/")){$("#organizationDetailView").classList.remove("hidden");return loadOrganizationDetail(h.split("/")[2])}if(h==="#/organizacje"){$("#organizationsView").classList.remove("hidden");return loadOrganizations()}if(h==="#/dopasuj"){$("#matcherView").classList.remove("hidden");return}if(h==="#/dodaj"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#submitView").classList.remove("hidden");return}if(h==="#/moje"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#myView").classList.remove("hidden");return loadMyCats()}if(h==="#/ulubione"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#favoritesView").classList.remove("hidden");return loadFavoritesView()}if(h==="#/admin"){if(!isAdmin){location.hash="#/";return}$("#adminView").classList.remove("hidden");return loadAdminCats()}if(h==="#/jak-to-dziala"){$("#howView").classList.remove("hidden");return}$("#homeView").classList.remove("hidden");await Promise.all([loadStats(),loadOrganizations(false)]);return loadPublicCats()}
 async function loadPublicCats(){if(!configured)return;await loadFavoriteIds();const {data,error}=await db.from("cats").select("*").eq("moderation_status","approved").in("adoption_status",["available","reserved"]).order("created_at",{ascending:false});if(error){$("#listingCount").textContent="Błąd pobierania ogłoszeń.";console.error(error);return}publicCats=data||[];renderPublicCats(publicCats);renderVoivodeshipMap()}
@@ -178,4 +246,4 @@ async function saveAdminEdit(e){
 window.openAdminEdit=openAdminEdit;
 
 async function moderate(id,status){let reason=null;if(status==="rejected"){reason=prompt("Podaj powód odrzucenia:");if(reason===null)return}const {error}=await db.from("cats").update({moderation_status:status,rejection_reason:status==="rejected"?reason:null,approved_at:status==="approved"?new Date().toISOString():null}).eq("id",id);if(error)alert(error.message);else loadAdminCats()}window.moderate=moderate;
-$("#closeAdoption").onclick=closeAdoption;$("#adoptionModal").onclick=e=>{if(e.target.id==="adoptionModal")closeAdoption()};$("#adoptionForm").addEventListener("submit",submitAdoption);$("#closeOrganizationAdmin").onclick=closeOrganizationAdmin;$("#organizationAdminModal").onclick=e=>{if(e.target.id==="organizationAdminModal")closeOrganizationAdmin()};$("#organizationAdminForm").addEventListener("submit",saveOrganization);$("#matcherForm").addEventListener("submit",runMatcher);$("#closeGallery").onclick=closeGallery;$("#galleryPrev").onclick=()=>changeGallery(-1);$("#galleryNext").onclick=()=>changeGallery(1);$("#galleryLightbox").onclick=e=>{if(e.target.id==="galleryLightbox")closeGallery()};document.addEventListener("keydown",e=>{if($("#galleryLightbox").classList.contains("hidden"))return;if(e.key==="Escape")closeGallery();if(e.key==="ArrowLeft")changeGallery(-1);if(e.key==="ArrowRight")changeGallery(1)});$("#closeAdminEdit").onclick=closeAdminEdit;$("#cancelAdminEdit").onclick=closeAdminEdit;$("#adminEditModal").onclick=e=>{if(e.target.id==="adminEditModal")closeAdminEdit()};$("#adminEditForm").addEventListener("submit",saveAdminEdit);$("#fundingEnabled").addEventListener("change",toggleFundingFields);$("#loginBtn").onclick=()=>openAuth("login");$("#registerBtn").onclick=()=>openAuth("register");$("#logoutBtn").onclick=async()=>{await db.auth.signOut();location.hash="#/"};$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};$("#authForm").addEventListener("submit",handleAuth);$("#catForm").addEventListener("submit",submitCat);$("#filterBtn").onclick=filterCats;$("#clearFilterBtn").onclick=clearFilters;$("#searchInput").addEventListener("input",filterCats);$("#sortFilter").addEventListener("change",filterCats);["sexFilter","ageFilter","voivodeshipFilter","adoptionFilter","neuteredFilter","vaccinatedFilter","chippedFilter","urgentFilter","fundingFilter"].forEach(id=>$("#"+id).addEventListener("change",filterCats));$("#imageInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);$("#imagePreview").innerHTML=`<img src="${url}" alt="Podgląd">`;$("#imagePreview").classList.remove("hidden")});$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});window.addEventListener("hashchange",()=>{document.title="KociDom — koty do adopcji";route()});fillVoivodeships();initAuth().then(route);
+$("#closeAdoption").onclick=closeAdoption;$("#adoptionModal").onclick=e=>{if(e.target.id==="adoptionModal")closeAdoption()};$("#adoptionForm").addEventListener("submit",submitAdoption);$("#closeOrganizationAdmin").onclick=closeOrganizationAdmin;$("#organizationAdminModal").onclick=e=>{if(e.target.id==="organizationAdminModal")closeOrganizationAdmin()};$("#organizationAdminForm").addEventListener("submit",saveOrganization);$("#matcherForm").addEventListener("submit",runMatcher);$("#closeGallery").onclick=closeGallery;$("#galleryPrev").onclick=()=>changeGallery(-1);$("#galleryNext").onclick=()=>changeGallery(1);$("#galleryLightbox").onclick=e=>{if(e.target.id==="galleryLightbox")closeGallery()};document.addEventListener("keydown",e=>{if($("#galleryLightbox").classList.contains("hidden"))return;if(e.key==="Escape")closeGallery();if(e.key==="ArrowLeft")changeGallery(-1);if(e.key==="ArrowRight")changeGallery(1)});$("#closeAdminEdit").onclick=closeAdminEdit;$("#cancelAdminEdit").onclick=closeAdminEdit;$("#adminEditModal").onclick=e=>{if(e.target.id==="adminEditModal")closeAdminEdit()};$("#adminEditForm").addEventListener("submit",saveAdminEdit);$("#fundingEnabled").addEventListener("change",toggleFundingFields);$("#loginBtn").onclick=()=>openAuth("login");$("#registerBtn").onclick=()=>openAuth("register");$("#logoutBtn").onclick=async()=>{await db.auth.signOut();location.hash="#/"};$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};$("#authForm").addEventListener("submit",handleAuth);$("#resendConfirmationBtn").onclick=resendConfirmation;$("#catForm").addEventListener("submit",submitCat);$("#filterBtn").onclick=filterCats;$("#clearFilterBtn").onclick=clearFilters;$("#searchInput").addEventListener("input",filterCats);$("#sortFilter").addEventListener("change",filterCats);["sexFilter","ageFilter","voivodeshipFilter","adoptionFilter","neuteredFilter","vaccinatedFilter","chippedFilter","urgentFilter","fundingFilter"].forEach(id=>$("#"+id).addEventListener("change",filterCats));$("#imageInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);$("#imagePreview").innerHTML=`<img src="${url}" alt="Podgląd">`;$("#imagePreview").classList.remove("hidden")});$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});window.addEventListener("hashchange",()=>{document.title="KociDom — koty do adopcji";route()});fillVoivodeships();showAuthCallbackMessage();initAuth().then(route);
