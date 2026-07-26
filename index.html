@@ -18,6 +18,8 @@
       <a href="#/dodaj" data-auth-only>Dodaj kota</a>
       <a href="#/moje" data-auth-only>Moje ogłoszenia</a>
       <a href="#/ulubione" data-auth-only>Ulubione</a>
+      <a href="#/organizacje">Organizacje</a>
+      <a href="#/dopasuj">Dobierz kota</a>
       <a href="#/admin" data-admin-only>Panel admina</a>
     </nav>
     <div class="auth-actions">
@@ -58,14 +60,16 @@
   </section>
 
   <section class="wrap page" id="homeView">
-    <div class="filters card">
-      <div class="field wide"><label>Szukaj</label><input id="searchInput" placeholder="Imię, miasto lub opis"></div>
+    <div class="filters card advanced-filters">
+      <div class="field wide"><label>Szukaj</label><input id="searchInput" placeholder="Imię, miasto, opis lub organizacja"></div>
       <div class="field"><label>Płeć</label><select id="sexFilter"><option value="">Wszystkie</option><option value="kotka">Kotka</option><option value="kocur">Kocur</option><option value="nieznana">Nieznana</option></select></div>
       <div class="field"><label>Wiek</label><select id="ageFilter"><option value="">Każdy</option><option value="kociak">Kociak</option><option value="mlody">Młody</option><option value="dorosly">Dorosły</option><option value="senior">Senior</option></select></div>
       <div class="field"><label>Województwo</label><select id="voivodeshipFilter"><option value="">Cała Polska</option></select></div>
-      <button class="btn primary" id="filterBtn">Filtruj</button>
-      <button class="btn secondary" id="clearFilterBtn">Wyczyść</button>
+      <div class="field"><label>Status</label><select id="adoptionFilter"><option value="">Dostępne i rezerwacje</option><option value="available">Szuka domu</option><option value="reserved">Rezerwacja</option></select></div>
+      <div class="filter-checks full"><label><input id="neuteredFilter" type="checkbox"> Po kastracji</label><label><input id="vaccinatedFilter" type="checkbox"> Zaszczepione</label><label><input id="chippedFilter" type="checkbox"> Zaczipowane</label><label><input id="urgentFilter" type="checkbox"> Pilna adopcja</label><label><input id="fundingFilter" type="checkbox"> Potrzebuje wsparcia</label></div>
+      <button class="btn primary" id="filterBtn">Filtruj</button><button class="btn secondary" id="clearFilterBtn">Wyczyść</button>
     </div>
+    <section class="poland-map-card card"><div class="map-copy"><span class="eyebrow admin-eyebrow">Szukaj lokalnie</span><h2>Wybierz województwo</h2><p>Kliknij region, aby zobaczyć koty z okolicy.</p></div><div id="voivodeshipMap" class="voivodeship-map"></div></section>
     <div class="section-head">
       <div><h2>Koty czekające na dom</h2><p id="listingCount">Ładowanie ogłoszeń…</p></div>
       <select id="sortFilter" class="sort-select">
@@ -103,7 +107,7 @@
         <div class="field"><label>Kontakt — imię *</label><input name="contact_name" maxlength="100" required></div>
         <div class="field"><label>E-mail *</label><input type="email" name="contact_email" required></div>
         <div class="field"><label>Telefon</label><input name="contact_phone" maxlength="40"></div>
-        <div class="field"><label>Fundacja / schronisko</label><input name="organization_name" maxlength="160"></div>
+        <div class="field"><label>Fundacja / schronisko</label><input name="organization_name" maxlength="160"></div><div class="field"><label>Profil organizacji</label><select name="organization_id" id="adminOrganizationSelect"><option value="">Brak profilu</option></select></div>
         <div class="field full">
           <label>Zdjęcie główne *</label>
           <input type="file" name="image" id="imageInput" accept="image/jpeg,image/png,image/webp" required>
@@ -129,12 +133,18 @@
     <div id="favoriteEmpty" class="empty hidden">Nie masz jeszcze ulubionych kotów.</div>
   </section>
 
+
+  <section class="wrap page hidden" id="organizationsView"><div class="page-title"><h2>Fundacje i schroniska</h2><p>Zweryfikowane organizacje publikujące koty w KociDom.</p></div><div id="organizationsGrid" class="organizations-grid"></div><div id="organizationsEmpty" class="empty hidden">Nie dodano jeszcze profili organizacji.</div></section>
+  <section class="wrap page hidden" id="organizationDetailView"></section>
+  <section class="wrap page hidden" id="matcherView"><div class="matcher-shell card"><div class="matcher-intro"><span class="eyebrow admin-eyebrow">Dopasowanie adopcyjne</span><h2>Jaki kot pasuje do Twojego domu?</h2><p>Odpowiedz na kilka pytań, a pokażemy najlepsze dopasowania.</p></div><form id="matcherForm" class="matcher-form"><div class="form-grid"><div class="field"><label>Typ domu</label><select name="home_type"><option value="flat">Mieszkanie</option><option value="house">Dom</option></select></div><div class="field"><label>Doświadczenie</label><select name="experience"><option value="none">Pierwszy kot</option><option value="some">Mam doświadczenie</option></select></div><div class="field"><label>Dzieci</label><select name="children"><option value="no">Nie</option><option value="yes">Tak</option></select></div><div class="field"><label>Inne zwierzęta</label><select name="pets"><option value="none">Brak</option><option value="cat">Kot</option><option value="dog">Pies</option><option value="both">Kot i pies</option></select></div><div class="field"><label>Aktywność</label><select name="activity"><option value="calm">Spokojny</option><option value="medium">Bez znaczenia</option><option value="active">Aktywny</option></select></div><div class="field"><label>Wiek</label><select name="age"><option value="">Bez znaczenia</option><option value="kociak">Kociak</option><option value="mlody">Młody</option><option value="dorosly">Dorosły</option><option value="senior">Senior</option></select></div><div class="checks full"><label><input type="checkbox" name="medical_ready"> Akceptuję kota wymagającego leczenia</label></div></div><button class="btn primary big" type="submit">Pokaż dopasowane koty</button></form></div><div id="matcherResults" class="matcher-results"></div></section>
   <section class="wrap page hidden" id="adminView">
     <div class="page-title"><h2>Panel administratora</h2><p>Akceptuj, edytuj i zarządzaj pomocą finansową.</p></div>
     <div class="admin-tabs">
       <button class="tab active" data-admin-filter="pending">Oczekujące</button>
       <button class="tab" data-admin-filter="approved">Opublikowane</button>
       <button class="tab" data-admin-filter="rejected">Odrzucone</button>
+      <button class="tab" data-admin-filter="applications">Zgłoszenia adopcyjne</button>
+      <button class="tab" data-admin-filter="organizations">Organizacje</button>
     </div>
     <div id="adminCats" class="dashboard-list"></div>
   </section>
@@ -191,7 +201,7 @@
             <small>Możesz dodać maksymalnie 12 dodatkowych zdjęć.</small>
           </div>
 
-          <div class="checks full">
+          <div class="field"><label>Charakter</label><select name="temperament"><option value="">Brak danych</option><option value="calm">Spokojny</option><option value="medium">Zrównoważony</option><option value="active">Aktywny</option></select></div><div class="field"><label>Doświadczenie opiekuna</label><select name="experience_required"><option value="none">Pierwszy kot</option><option value="some">Wskazane doświadczenie</option></select></div><div class="checks full"><label><input type="checkbox" name="good_with_children"> Dzieci</label><label><input type="checkbox" name="good_with_cats"> Koty</label><label><input type="checkbox" name="good_with_dogs"> Psy</label><label><input type="checkbox" name="flat_suitable"> Mieszkanie</label></div><div class="checks full">
             <label><input type="checkbox" name="vaccinated"> Zaszczepiony</label>
             <label><input type="checkbox" name="dewormed"> Odrobaczony</label>
             <label><input type="checkbox" name="neutered"> Wykastrowany</label>
@@ -234,6 +244,9 @@
   </div>
 </div>
 
+
+<div class="modal hidden" id="adoptionModal"><div class="modal-card adoption-modal-card"><button class="modal-close" id="closeAdoption" type="button">×</button><h2 id="adoptionTitle">Zgłoszenie adopcyjne</h2><p class="modal-lead">Zgłoszenie trafi do administratora i organizacji.</p><form id="adoptionForm"><input type="hidden" name="cat_id"><div class="form-grid"><div class="field"><label>Imię i nazwisko *</label><input name="full_name" required></div><div class="field"><label>E-mail *</label><input type="email" name="email" required></div><div class="field"><label>Telefon *</label><input name="phone" required></div><div class="field"><label>Miasto *</label><input name="city" required></div><div class="field"><label>Typ domu</label><select name="home_type"><option value="flat">Mieszkanie</option><option value="house">Dom</option></select></div><div class="field"><label>Inne zwierzęta</label><select name="other_pets"><option value="none">Brak</option><option value="cat">Kot</option><option value="dog">Pies</option><option value="both">Kot i pies</option></select></div><div class="checks full"><label><input type="checkbox" name="children"> Dzieci w domu</label><label><input type="checkbox" name="secured_windows" required> Zabezpieczone okna/balkon *</label><label><input type="checkbox" name="pre_adoption_visit" required> Zgoda na wizytę przedadopcyjną *</label></div><div class="field full"><label>Kilka zdań o sobie *</label><textarea name="message" rows="5" required></textarea></div></div><div id="adoptionMessage" class="message hidden"></div><button class="btn primary big full-btn" type="submit">Wyślij zgłoszenie</button></form></div></div>
+<div class="modal hidden" id="organizationAdminModal"><div class="modal-card organization-admin-modal"><button class="modal-close" id="closeOrganizationAdmin" type="button">×</button><h2>Profil organizacji</h2><form id="organizationAdminForm"><input type="hidden" name="id"><div class="form-grid"><div class="field"><label>Nazwa *</label><input name="name" required></div><div class="field"><label>Miasto</label><input name="city"></div><div class="field"><label>Województwo</label><select name="voivodeship" id="organizationVoivodeshipSelect"></select></div><div class="field"><label>E-mail</label><input type="email" name="email"></div><div class="field"><label>Telefon</label><input name="phone"></div><div class="field"><label>WWW</label><input type="url" name="website_url"></div><div class="field"><label>Facebook</label><input type="url" name="facebook_url"></div><div class="field"><label>Logo URL</label><input type="url" name="logo_url"></div><div class="field full"><label>Opis</label><textarea name="description" rows="5"></textarea></div><div class="checks full"><label><input type="checkbox" name="verified"> Zweryfikowana</label></div></div><div id="organizationAdminMessage" class="message hidden"></div><button class="btn primary big full-btn" type="submit">Zapisz organizację</button></form></div></div>
 <div class="modal hidden" id="authModal">
   <div class="modal-card">
     <button class="modal-close" id="closeAuth">×</button>
