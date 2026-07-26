@@ -98,3 +98,24 @@
   .hero-grid-single .hero-actions,.hero-points{justify-content:flex-start}
   .hero-points{gap:7px}
 }
+
+
+/* KociDom v1.1 — strony informacyjne i prawne */
+.legal-hero{padding:18px 0 26px;max-width:820px}
+.legal-hero h1{font-size:clamp(38px,6vw,58px);line-height:1.02;letter-spacing:-.045em;margin:12px 0}
+.legal-hero p{font-size:18px;color:var(--muted);margin:0}
+.legal-card{max-width:920px;padding:clamp(24px,5vw,52px);margin-bottom:24px}
+.legal-card h2{font-size:34px;letter-spacing:-.03em;margin:0 0 16px}
+.legal-card h3{font-size:22px;margin:34px 0 10px}
+.legal-card p,.legal-card li{color:#435158}
+.legal-card li+li{margin-top:8px}
+.legal-card ol,.legal-card ul{padding-left:24px}
+.legal-card a{color:var(--green);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.legal-date{font-size:14px;color:var(--muted)!important;border-bottom:1px solid var(--line);padding-bottom:18px}
+.legal-callout{background:#eef7f2;border:1px solid #cfe5d9;border-left:5px solid var(--green);padding:18px 20px;border-radius:14px;margin-top:28px}
+.legal-contact{font-size:22px}
+.legal-card address{font-style:normal;background:#f5f8f6;border:1px solid var(--line);border-radius:14px;padding:18px;display:inline-block}
+.legal-footer-links{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.legal-footer-links a{opacity:.88}
+.legal-footer-links a:hover{opacity:1;text-decoration:underline}
+@media(max-width:650px){.legal-card{padding:24px 20px}.legal-card h2{font-size:29px}.legal-card h3{font-size:20px}.legal-footer-links{gap:10px 15px}}
