@@ -86,8 +86,8 @@ function showAuthCallbackMessage(){
     },300)
   }
 }
-function hideViews(){["homeView","submitView","myView","favoritesView","organizationsView","organizationDetailView","matcherView","adminView","detailView","howView"].forEach(id=>$("#"+id).classList.add("hidden"))}
-async function route(){const h=location.hash||"#/";hideViews();if(h.startsWith("#/kot/")){$("#detailView").classList.remove("hidden");return loadDetail(h.split("/")[2])}if(h.startsWith("#/organizacja/")){$("#organizationDetailView").classList.remove("hidden");return loadOrganizationDetail(h.split("/")[2])}if(h==="#/organizacje"){$("#organizationsView").classList.remove("hidden");return loadOrganizations()}if(h==="#/dopasuj"){$("#matcherView").classList.remove("hidden");return}if(h==="#/dodaj"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#submitView").classList.remove("hidden");return}if(h==="#/moje"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#myView").classList.remove("hidden");return loadMyCats()}if(h==="#/ulubione"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#favoritesView").classList.remove("hidden");return loadFavoritesView()}if(h==="#/admin"){if(!isAdmin){location.hash="#/";return}$("#adminView").classList.remove("hidden");return loadAdminCats()}if(h==="#/jak-to-dziala"){$("#howView").classList.remove("hidden");return}$("#homeView").classList.remove("hidden");await Promise.all([loadStats(),loadOrganizations(false)]);return loadPublicCats()}
+function hideViews(){["homeView","submitView","myView","favoritesView","organizationsView","organizationDetailView","matcherView","adminView","detailView","howView","legalView"].forEach(id=>$("#"+id)?.classList.add("hidden"))}
+async function route(){const h=location.hash||"#/";hideViews();if(h.startsWith("#/kot/")){$("#detailView").classList.remove("hidden");return loadDetail(h.split("/")[2])}if(h.startsWith("#/organizacja/")){$("#organizationDetailView").classList.remove("hidden");return loadOrganizationDetail(h.split("/")[2])}if(h==="#/organizacje"){$("#organizationsView").classList.remove("hidden");return loadOrganizations()}if(h==="#/dopasuj"){$("#matcherView").classList.remove("hidden");return}if(h==="#/dodaj"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#submitView").classList.remove("hidden");return}if(h==="#/moje"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#myView").classList.remove("hidden");return loadMyCats()}if(h==="#/ulubione"){if(!currentUser){openAuth("login");location.hash="#/";return}$("#favoritesView").classList.remove("hidden");return loadFavoritesView()}if(h==="#/admin"){if(!isAdmin){location.hash="#/";return}$("#adminView").classList.remove("hidden");return loadAdminCats()}if(h==="#/jak-to-dziala"){$("#howView").classList.remove("hidden");return}if(["#/o-nas","#/kontakt","#/regulamin","#/polityka-prywatnosci","#/polityka-cookies"].includes(h)){return renderLegalPage(h)}$("#homeView").classList.remove("hidden");await Promise.all([loadStats(),loadOrganizations(false)]);return loadPublicCats()}
 async function loadPublicCats(){if(!configured)return;await loadFavoriteIds();const {data,error}=await db.from("cats").select("*").eq("moderation_status","approved").in("adoption_status",["available","reserved"]).order("created_at",{ascending:false});if(error){$("#listingCount").textContent="Błąd pobierania ogłoszeń.";console.error(error);return}publicCats=data||[];renderPublicCats(publicCats);renderVoivodeshipMap()}
 function renderPublicCats(cats){$("#listingCount").textContent=`${cats.length} aktualnych ogłoszeń`;$("#emptyState").classList.toggle("hidden",cats.length>0);$("#catsGrid").innerHTML=cats.map(catCard).join("")}
 function fundingBlock(c, compact=false){
@@ -245,5 +245,117 @@ async function saveAdminEdit(e){
 }
 window.openAdminEdit=openAdminEdit;
 
+
+
+const LEGAL_UPDATED = "26 lipca 2026 r.";
+const legalPages = {
+  "#/o-nas": {
+    title: "O nas",
+    lead: "Łączymy koty szukające domu z ludźmi gotowymi na odpowiedzialną adopcję.",
+    html: `
+      <h2>O KociDom.pl</h2>
+      <p>KociDom.pl to ogólnopolski, bezpłatny portal adopcyjny. Powstał po to, aby ułatwiać publikowanie i odnajdywanie ogłoszeń kotów czekających na bezpieczne, odpowiedzialne domy.</p>
+      <p>Z serwisu mogą korzystać fundacje, schroniska, domy tymczasowe oraz osoby prywatne. Każde nowe ogłoszenie jest sprawdzane przez administratora przed publikacją.</p>
+      <h3>Nasza misja</h3>
+      <ul><li>pomagać kotom znaleźć odpowiedzialne domy,</li><li>wspierać organizacje i osoby opiekujące się kotami,</li><li>promować adopcję zamiast zakupu,</li><li>udostępniać bezpłatne i przejrzyste narzędzia adopcyjne.</li></ul>
+      <div class="legal-callout"><strong>Ważne:</strong> KociDom.pl pośredniczy w publikowaniu ogłoszeń i przyjmowaniu zgłoszeń adopcyjnych. Ostateczne warunki adopcji ustala opiekun kota.</div>`
+  },
+  "#/kontakt": {
+    title: "Kontakt",
+    lead: "Pytania, zgłoszenia i sprawy dotyczące działania portalu.",
+    html: `
+      <h2>Skontaktuj się z nami</h2>
+      <p>W sprawach dotyczących konta, ogłoszeń, formularzy adopcyjnych, prywatności lub zgłoszenia nieprawidłowej treści napisz na adres:</p>
+      <p class="legal-contact"><a href="mailto:cichy1904@wp.pl">cichy1904@wp.pl</a></p>
+      <h3>Administrator serwisu</h3>
+      <address>Mariusz Cichowski<br>Cicha 9/5<br>10-281 Olsztyn</address>
+      <h3>Co warto podać w wiadomości?</h3>
+      <p>Link do ogłoszenia lub nazwę kota, opis problemu oraz adres e-mail przypisany do konta. Nie przesyłaj haseł ani innych danych, które nie są potrzebne do rozwiązania sprawy.</p>`
+  },
+  "#/regulamin": {
+    title: "Regulamin",
+    lead: "Zasady korzystania z portalu KociDom.pl.",
+    html: `
+      <h2>Regulamin serwisu KociDom.pl</h2>
+      <p class="legal-date">Obowiązuje od: ${LEGAL_UPDATED}</p>
+      <h3>§ 1. Postanowienia ogólne</h3>
+      <ol><li>Serwis KociDom.pl, dalej „Serwis”, prowadzony jest przez Mariusza Cichowskiego, Cicha 9/5, 10-281 Olsztyn, e-mail: <a href="mailto:cichy1904@wp.pl">cichy1904@wp.pl</a>, dalej „Administrator”.</li><li>Regulamin określa zasady świadczenia usług drogą elektroniczną, w szczególności prowadzenia kont, publikowania ogłoszeń adopcyjnych i obsługi zgłoszeń adopcyjnych.</li><li>Korzystanie z Serwisu jest bezpłatne.</li><li>Do korzystania wymagane są urządzenie z dostępem do Internetu, aktualna przeglądarka oraz aktywny adres e-mail.</li></ol>
+      <h3>§ 2. Konto użytkownika</h3>
+      <ol><li>Konto może założyć osoba posiadająca zdolność do czynności prawnych albo działająca za zgodą przedstawiciela ustawowego.</li><li>Użytkownik podaje prawdziwy adres e-mail i chroni dane logowania.</li><li>Zabronione jest udostępnianie konta osobom trzecim, podszywanie się pod inne osoby oraz wykorzystywanie Serwisu niezgodnie z prawem.</li><li>Użytkownik może zażądać usunięcia konta, kontaktując się z Administratorem.</li></ol>
+      <h3>§ 3. Ogłoszenia</h3>
+      <ol><li>Ogłoszenia mogą dodawać zarejestrowani użytkownicy: osoby prywatne, domy tymczasowe, fundacje i schroniska.</li><li>Użytkownik odpowiada za zgodność, prawdziwość i aktualność treści oraz za posiadanie praw do zdjęć i innych materiałów.</li><li>Każde ogłoszenie podlega moderacji przed publikacją. Administrator może zaakceptować, odrzucić, poprawić oczywiste błędy lub poprosić o uzupełnienie informacji.</li><li>Zabronione są treści bezprawne, wprowadzające w błąd, obraźliwe, dyskryminujące, naruszające dobra osobiste lub prawa autorskie, a także ogłoszenia sprzedaży zwierząt, reklamy niezwiązane z adopcją i próby wyłudzenia.</li><li>Użytkownik powinien niezwłocznie zaktualizować status ogłoszenia, gdy kot zostanie zarezerwowany lub adoptowany.</li></ol>
+      <h3>§ 4. Zgłoszenia adopcyjne</h3>
+      <ol><li>Formularz adopcyjny jest przekazywany Administratorowi w celu obsługi zgłoszenia i skontaktowania zainteresowanej osoby z właściwym opiekunem kota.</li><li>Wysłanie formularza nie gwarantuje adopcji i nie stanowi zawarcia umowy.</li><li>Decyzję o adopcji oraz jej warunki podejmuje opiekun kota. Administrator nie jest stroną umowy adopcyjnej, chyba że wyraźnie wskazano inaczej.</li></ol>
+      <h3>§ 5. Moderacja i zgłaszanie naruszeń</h3>
+      <ol><li>Nieprawidłową lub bezprawną treść można zgłosić na adres <a href="mailto:cichy1904@wp.pl">cichy1904@wp.pl</a>, podając link, opis naruszenia i dane kontaktowe zgłaszającego.</li><li>Administrator może ukryć lub usunąć treść, ograniczyć funkcje konta albo usunąć konto w razie naruszenia Regulaminu lub prawa.</li><li>Użytkownik może zwrócić się o ponowne rozpatrzenie decyzji moderacyjnej w terminie 14 dni od otrzymania informacji o decyzji.</li></ol>
+      <h3>§ 6. Odpowiedzialność</h3>
+      <ol><li>Administrator dokłada należytej staranności, lecz nie gwarantuje ciągłej i bezbłędnej dostępności Serwisu.</li><li>Administrator nie potwierdza osobiście wszystkich informacji o zwierzętach i nie odpowiada za działania użytkowników lub opiekunów kotów, z wyjątkiem odpowiedzialności, której nie można wyłączyć na mocy prawa.</li><li>Moderacja nie stanowi gwarancji stanu zdrowia, charakteru, pochodzenia ani sytuacji prawnej kota.</li></ol>
+      <h3>§ 7. Reklamacje</h3>
+      <ol><li>Reklamacje dotyczące działania Serwisu można przesłać na adres e-mail Administratora.</li><li>Reklamacja powinna zawierać opis problemu i dane umożliwiające udzielenie odpowiedzi.</li><li>Administrator rozpatruje reklamację nie później niż w ciągu 14 dni.</li></ol>
+      <h3>§ 8. Postanowienia końcowe</h3>
+      <ol><li>Administrator może zmienić Regulamin z ważnych przyczyn, w szczególności zmiany prawa, funkcji Serwisu lub zasad bezpieczeństwa.</li><li>O istotnych zmianach zarejestrowani użytkownicy zostaną poinformowani w Serwisie lub wiadomością e-mail.</li><li>W sprawach nieuregulowanych stosuje się prawo polskie.</li></ol>`
+  },
+  "#/polityka-prywatnosci": {
+    title: "Polityka prywatności",
+    lead: "Informacje o przetwarzaniu danych osobowych w KociDom.pl.",
+    html: `
+      <h2>Polityka prywatności</h2>
+      <p class="legal-date">Ostatnia aktualizacja: ${LEGAL_UPDATED}</p>
+      <h3>1. Administrator danych</h3>
+      <p>Administratorem danych osobowych jest Mariusz Cichowski, Cicha 9/5, 10-281 Olsztyn. Kontakt: <a href="mailto:cichy1904@wp.pl">cichy1904@wp.pl</a>.</p>
+      <h3>2. Jakie dane przetwarzamy?</h3>
+      <ul><li>dane konta: adres e-mail i identyfikator użytkownika,</li><li>dane ogłoszeń: imię i opis kota, lokalizacja, dane kontaktowe opiekuna, zdjęcia i informacje o organizacji,</li><li>dane formularza adopcyjnego: imię i nazwisko, e-mail, telefon, miasto, warunki mieszkaniowe i treść odpowiedzi,</li><li>dane techniczne i bezpieczeństwa, np. adres IP, logi, typ urządzenia i przeglądarki.</li></ul>
+      <h3>3. Cele i podstawy prawne</h3>
+      <ul><li>prowadzenie konta i świadczenie funkcji Serwisu — wykonanie umowy,</li><li>moderacja, bezpieczeństwo, zapobieganie nadużyciom i dochodzenie roszczeń — prawnie uzasadniony interes Administratora,</li><li>obsługa zgłoszeń adopcyjnych — działania podejmowane na żądanie użytkownika oraz prawnie uzasadniony interes polegający na wspieraniu procesu adopcji,</li><li>realizacja obowiązków prawnych — obowiązek prawny,</li><li>analityka lub marketing, jeśli zostaną uruchomione — zgoda, gdy jest wymagana.</li></ul>
+      <h3>4. Odbiorcy danych</h3>
+      <p>Dane mogą być powierzane dostawcom hostingu, infrastruktury, bazy danych, poczty i bezpieczeństwa, w szczególności Cloudflare i Supabase, wyłącznie w zakresie niezbędnym do działania Serwisu. Dane ze zgłoszenia adopcyjnego mogą zostać przekazane opiekunowi kota, aby umożliwić kontakt i przeprowadzenie procesu adopcji.</p>
+      <h3>5. Przekazywanie poza Europejski Obszar Gospodarczy</h3>
+      <p>Niektórzy dostawcy infrastruktury mogą przetwarzać dane poza EOG. W takim przypadku stosowane są odpowiednie zabezpieczenia prawne, np. decyzja stwierdzająca odpowiedni poziom ochrony lub standardowe klauzule umowne.</p>
+      <h3>6. Okres przechowywania</h3>
+      <ul><li>dane konta — do usunięcia konta, a następnie przez okres potrzebny do rozliczenia roszczeń,</li><li>ogłoszenia — przez czas publikacji i niezbędny okres archiwalny,</li><li>zgłoszenia adopcyjne — przez czas obsługi, a następnie nie dłużej niż 24 miesiące, chyba że dłuższe przechowywanie jest potrzebne do obrony roszczeń,</li><li>logi bezpieczeństwa — przez okres uzasadniony ochroną Serwisu.</li></ul>
+      <h3>7. Twoje prawa</h3>
+      <p>Masz prawo dostępu do danych, ich sprostowania, usunięcia, ograniczenia przetwarzania, przenoszenia, wniesienia sprzeciwu oraz wycofania zgody. Możesz także złożyć skargę do Prezesa Urzędu Ochrony Danych Osobowych.</p>
+      <h3>8. Dobrowolność danych</h3>
+      <p>Podanie danych jest dobrowolne, lecz część z nich jest konieczna do utworzenia konta, publikacji ogłoszenia lub wysłania formularza adopcyjnego.</p>
+      <h3>9. Bezpieczeństwo i automatyzacja</h3>
+      <p>Stosujemy środki techniczne i organizacyjne dopasowane do ryzyka. Funkcja dopasowania kota ma charakter pomocniczy i nie podejmuje decyzji wywołujących skutki prawne wobec użytkownika.</p>`
+  },
+  "#/polityka-cookies": {
+    title: "Polityka cookies",
+    lead: "Jak KociDom.pl wykorzystuje pliki cookies i podobne technologie.",
+    html: `
+      <h2>Polityka cookies</h2>
+      <p class="legal-date">Ostatnia aktualizacja: ${LEGAL_UPDATED}</p>
+      <h3>1. Czym są cookies?</h3>
+      <p>Cookies to małe pliki zapisywane na urządzeniu użytkownika. Podobną funkcję mogą pełnić pamięć lokalna przeglądarki i inne identyfikatory techniczne.</p>
+      <h3>2. Cookies niezbędne</h3>
+      <p>Serwis wykorzystuje technologie konieczne do logowania, utrzymania sesji, zapamiętania ustawień, ochrony formularzy i zapewnienia bezpieczeństwa. Bez nich część funkcji może nie działać poprawnie.</p>
+      <h3>3. Analityka i marketing</h3>
+      <p>Na dzień publikacji polityki Serwis nie wykorzystuje reklamowych plików cookies. Gdy zostanie uruchomiona analityka lub marketing wymagające zgody, takie technologie będą aktywowane dopiero po wyborze użytkownika w banerze cookies.</p>
+      <h3>4. Zarządzanie cookies</h3>
+      <p>Cookies można usuwać i blokować w ustawieniach przeglądarki. Zablokowanie cookies niezbędnych może uniemożliwić logowanie lub korzystanie z niektórych funkcji.</p>
+      <h3>5. Zmiany polityki</h3>
+      <p>Polityka może być aktualizowana wraz ze zmianą funkcji Serwisu lub wykorzystywanych narzędzi. Aktualna wersja jest zawsze dostępna na tej stronie.</p>`
+  }
+};
+function ensureLegalUI(){
+  if(!$("#legalView")){
+    const section=document.createElement("section");section.id="legalView";section.className="wrap page hidden";
+    document.querySelector("main")?.appendChild(section);
+  }
+  const footer=document.querySelector("footer .footer-grid");
+  if(footer&&!footer.querySelector(".legal-footer-links")){
+    const links=document.createElement("div");links.className="legal-footer-links";
+    links.innerHTML='<a href="#/o-nas">O nas</a><a href="#/kontakt">Kontakt</a><a href="#/regulamin">Regulamin</a><a href="#/polityka-prywatnosci">Prywatność</a><a href="#/polityka-cookies">Cookies</a>';
+    footer.appendChild(links);
+  }
+}
+function renderLegalPage(hash){
+  ensureLegalUI();const page=legalPages[hash];if(!page)return;
+  document.title=`${page.title} | KociDom.pl`;
+  const view=$("#legalView");view.classList.remove("hidden");
+  view.innerHTML=`<div class="legal-hero"><span class="eyebrow">KociDom.pl</span><h1>${page.title}</h1><p>${page.lead}</p></div><article class="legal-card card">${page.html}</article>`;
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 async function moderate(id,status){let reason=null;if(status==="rejected"){reason=prompt("Podaj powód odrzucenia:");if(reason===null)return}const {error}=await db.from("cats").update({moderation_status:status,rejection_reason:status==="rejected"?reason:null,approved_at:status==="approved"?new Date().toISOString():null}).eq("id",id);if(error)alert(error.message);else loadAdminCats()}window.moderate=moderate;
-$("#closeAdoption").onclick=closeAdoption;$("#adoptionModal").onclick=e=>{if(e.target.id==="adoptionModal")closeAdoption()};$("#adoptionForm").addEventListener("submit",submitAdoption);$("#closeOrganizationAdmin").onclick=closeOrganizationAdmin;$("#organizationAdminModal").onclick=e=>{if(e.target.id==="organizationAdminModal")closeOrganizationAdmin()};$("#organizationAdminForm").addEventListener("submit",saveOrganization);$("#matcherForm").addEventListener("submit",runMatcher);$("#closeGallery").onclick=closeGallery;$("#galleryPrev").onclick=()=>changeGallery(-1);$("#galleryNext").onclick=()=>changeGallery(1);$("#galleryLightbox").onclick=e=>{if(e.target.id==="galleryLightbox")closeGallery()};document.addEventListener("keydown",e=>{if($("#galleryLightbox").classList.contains("hidden"))return;if(e.key==="Escape")closeGallery();if(e.key==="ArrowLeft")changeGallery(-1);if(e.key==="ArrowRight")changeGallery(1)});$("#closeAdminEdit").onclick=closeAdminEdit;$("#cancelAdminEdit").onclick=closeAdminEdit;$("#adminEditModal").onclick=e=>{if(e.target.id==="adminEditModal")closeAdminEdit()};$("#adminEditForm").addEventListener("submit",saveAdminEdit);$("#fundingEnabled").addEventListener("change",toggleFundingFields);$("#loginBtn").onclick=()=>openAuth("login");$("#registerBtn").onclick=()=>openAuth("register");$("#logoutBtn").onclick=async()=>{await db.auth.signOut();location.hash="#/"};$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};$("#authForm").addEventListener("submit",handleAuth);$("#resendConfirmationBtn").onclick=resendConfirmation;$("#catForm").addEventListener("submit",submitCat);$("#filterBtn").onclick=filterCats;$("#clearFilterBtn").onclick=clearFilters;$("#searchInput").addEventListener("input",filterCats);$("#sortFilter").addEventListener("change",filterCats);["sexFilter","ageFilter","voivodeshipFilter","adoptionFilter","neuteredFilter","vaccinatedFilter","chippedFilter","urgentFilter","fundingFilter"].forEach(id=>$("#"+id).addEventListener("change",filterCats));$("#imageInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);$("#imagePreview").innerHTML=`<img src="${url}" alt="Podgląd">`;$("#imagePreview").classList.remove("hidden")});$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});window.addEventListener("hashchange",()=>{document.title="KociDom — koty do adopcji";route()});fillVoivodeships();showAuthCallbackMessage();initAuth().then(route);
+$("#closeAdoption").onclick=closeAdoption;$("#adoptionModal").onclick=e=>{if(e.target.id==="adoptionModal")closeAdoption()};$("#adoptionForm").addEventListener("submit",submitAdoption);$("#closeOrganizationAdmin").onclick=closeOrganizationAdmin;$("#organizationAdminModal").onclick=e=>{if(e.target.id==="organizationAdminModal")closeOrganizationAdmin()};$("#organizationAdminForm").addEventListener("submit",saveOrganization);$("#matcherForm").addEventListener("submit",runMatcher);$("#closeGallery").onclick=closeGallery;$("#galleryPrev").onclick=()=>changeGallery(-1);$("#galleryNext").onclick=()=>changeGallery(1);$("#galleryLightbox").onclick=e=>{if(e.target.id==="galleryLightbox")closeGallery()};document.addEventListener("keydown",e=>{if($("#galleryLightbox").classList.contains("hidden"))return;if(e.key==="Escape")closeGallery();if(e.key==="ArrowLeft")changeGallery(-1);if(e.key==="ArrowRight")changeGallery(1)});$("#closeAdminEdit").onclick=closeAdminEdit;$("#cancelAdminEdit").onclick=closeAdminEdit;$("#adminEditModal").onclick=e=>{if(e.target.id==="adminEditModal")closeAdminEdit()};$("#adminEditForm").addEventListener("submit",saveAdminEdit);$("#fundingEnabled").addEventListener("change",toggleFundingFields);$("#loginBtn").onclick=()=>openAuth("login");$("#registerBtn").onclick=()=>openAuth("register");$("#logoutBtn").onclick=async()=>{await db.auth.signOut();location.hash="#/"};$("#closeAuth").onclick=()=>$("#authModal").classList.add("hidden");$("#authModal").onclick=e=>{if(e.target.id==="authModal")$("#authModal").classList.add("hidden")};$("#authForm").addEventListener("submit",handleAuth);$("#resendConfirmationBtn").onclick=resendConfirmation;$("#catForm").addEventListener("submit",submitCat);$("#filterBtn").onclick=filterCats;$("#clearFilterBtn").onclick=clearFilters;$("#searchInput").addEventListener("input",filterCats);$("#sortFilter").addEventListener("change",filterCats);["sexFilter","ageFilter","voivodeshipFilter","adoptionFilter","neuteredFilter","vaccinatedFilter","chippedFilter","urgentFilter","fundingFilter"].forEach(id=>$("#"+id).addEventListener("change",filterCats));$("#imageInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f);$("#imagePreview").innerHTML=`<img src="${url}" alt="Podgląd">`;$("#imagePreview").classList.remove("hidden")});$$(".tab").forEach(t=>t.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");adminFilter=t.dataset.adminFilter;loadAdminCats()});window.addEventListener("hashchange",()=>{document.title="KociDom — koty do adopcji";route()});ensureLegalUI();fillVoivodeships();showAuthCallbackMessage();initAuth().then(route);
