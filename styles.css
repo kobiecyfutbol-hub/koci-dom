@@ -11,3 +11,27 @@
 .funding-fields{transition:opacity .2s}.funding-fields.funding-disabled{opacity:.45}.funding-warning{background:#fff7db;border:1px solid #ead994;border-radius:12px;padding:12px 14px;font-size:13px;color:#665214}
 .admin-form-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:22px}.funding-badge{margin-left:6px;background:#f3f8e6;color:#52651f}.reason{margin-top:8px;color:var(--danger);font-size:13px}
 @media(max-width:650px){.admin-edit-head{padding:24px 20px 15px}.admin-edit-modal form{padding:8px 20px 24px}.section-with-toggle{align-items:flex-start;flex-direction:column}.admin-form-actions{position:sticky;bottom:-1px;background:#fff;padding:15px 0 0}}
+
+
+/* KociDom v1.5 — statystyki, ulubione i galeria */
+.stats-strip{background:#fff;border-bottom:1px solid var(--line)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:24px 0}
+.stat-card{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;padding:18px 20px;background:#f7faf8;border:1px solid var(--line);border-radius:18px}
+.stat-card>span{grid-row:1/3;font-size:30px}.stat-card strong{font-size:27px;line-height:1}.stat-card small{color:var(--muted);font-weight:700;margin-top:4px}
+.favorite-btn{position:absolute;top:14px;right:14px;z-index:3;width:43px;height:43px;border:0;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(0,0,0,.15);font-size:28px;line-height:1;color:#51605d;cursor:pointer;display:grid;place-items:center}
+.favorite-btn:hover,.favorite-btn.active{color:#d73457;transform:scale(1.05)}
+.detail-heading-row{display:flex;align-items:center;justify-content:space-between}.detail-heading-row .favorite-btn{position:static;box-shadow:none;border:1px solid var(--line);background:#fff}
+.detail-photo{display:flex;flex-direction:column;min-height:0;padding:0;background:#e9efec}
+.detail-main-photo{border:0;padding:0;background:#e9efec;cursor:zoom-in;position:relative;min-height:520px;flex:1}
+.detail-main-photo img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.gallery-thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:8px;background:#fff}
+.gallery-thumbs button{height:82px;border:0;padding:0;border-radius:10px;overflow:hidden;position:relative;cursor:pointer;background:#e9efec}
+.gallery-thumbs img{width:100%;height:100%;object-fit:cover}.gallery-thumbs span{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.58);color:#fff;font-size:21px;font-weight:900}
+.gallery-lightbox{position:fixed;inset:0;z-index:100;background:rgba(3,10,9,.94);display:flex;align-items:center;justify-content:center;padding:40px 90px}
+.gallery-lightbox img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:12px}
+.gallery-close,.gallery-arrow{position:absolute;border:0;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}
+.gallery-close{right:24px;top:18px;width:48px;height:48px;border-radius:50%;font-size:34px}.gallery-arrow{top:50%;transform:translateY(-50%);width:58px;height:72px;border-radius:16px;font-size:48px}.gallery-prev{left:20px}.gallery-next{right:20px}
+.gallery-counter{position:absolute;bottom:18px;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:8px 14px;font-weight:800}
+.light{color:var(--green)}
+@media(max-width:950px){.stats-grid{grid-template-columns:1fr 1fr}.detail-main-photo{min-height:430px}}
+@media(max-width:650px){.stats-grid{grid-template-columns:1fr 1fr;gap:8px;padding:14px 0}.stat-card{padding:13px}.stat-card>span{font-size:24px}.stat-card strong{font-size:22px}.stat-card small{font-size:11px}.gallery-lightbox{padding:65px 12px}.gallery-arrow{width:42px;height:58px;font-size:38px}.gallery-prev{left:6px}.gallery-next{right:6px}.gallery-thumbs{grid-template-columns:repeat(4,1fr)}.gallery-thumbs button{height:66px}}
