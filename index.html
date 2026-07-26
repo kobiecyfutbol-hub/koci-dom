@@ -17,6 +17,7 @@
       <a href="#/">Koty</a>
       <a href="#/dodaj" data-auth-only>Dodaj kota</a>
       <a href="#/moje" data-auth-only>Moje ogłoszenia</a>
+      <a href="#/ulubione" data-auth-only>Ulubione</a>
       <a href="#/admin" data-admin-only>Panel admina</a>
     </nav>
     <div class="auth-actions">
@@ -46,6 +47,16 @@
       </div>
     </div>
   </section>
+
+  <section class="stats-strip">
+    <div class="wrap stats-grid">
+      <div class="stat-card"><span>🐱</span><strong id="statAvailable">—</strong><small>Kotów szuka domu</small></div>
+      <div class="stat-card"><span>🏠</span><strong id="statAdopted">—</strong><small>Udanych adopcji</small></div>
+      <div class="stat-card"><span>❤️</span><strong id="statFavorites">—</strong><small>Dodań do ulubionych</small></div>
+      <div class="stat-card"><span>💚</span><strong id="statRaised">—</strong><small>Zł zebrano na pomoc</small></div>
+    </div>
+  </section>
+
   <section class="wrap page" id="homeView">
     <div class="filters card">
       <div class="field wide"><label>Szukaj</label><input id="searchInput" placeholder="Imię, miasto lub opis"></div>
@@ -108,6 +119,16 @@
     <div class="page-title"><h2>Moje ogłoszenia</h2><p>Tu zobaczysz status każdego zgłoszenia.</p></div>
     <div id="myCats" class="dashboard-list"></div>
   </section>
+
+  <section class="wrap page hidden" id="favoritesView">
+    <div class="page-title">
+      <h2>Moje ulubione koty</h2>
+      <p>Zapisane ogłoszenia, do których możesz szybko wrócić.</p>
+    </div>
+    <div id="favoriteCats" class="cats-grid"></div>
+    <div id="favoriteEmpty" class="empty hidden">Nie masz jeszcze ulubionych kotów.</div>
+  </section>
+
   <section class="wrap page hidden" id="adminView">
     <div class="page-title"><h2>Panel administratora</h2><p>Akceptuj, edytuj i zarządzaj pomocą finansową.</p></div>
     <div class="admin-tabs">
@@ -130,6 +151,15 @@
     </div>
   </section>
 </main>
+
+
+<div class="gallery-lightbox hidden" id="galleryLightbox">
+  <button class="gallery-close" id="closeGallery" type="button" aria-label="Zamknij">×</button>
+  <button class="gallery-arrow gallery-prev" id="galleryPrev" type="button" aria-label="Poprzednie zdjęcie">‹</button>
+  <img id="galleryLightboxImage" alt="Zdjęcie kota">
+  <button class="gallery-arrow gallery-next" id="galleryNext" type="button" aria-label="Następne zdjęcie">›</button>
+  <div class="gallery-counter" id="galleryCounter"></div>
+</div>
 
 <div class="modal hidden" id="adminEditModal">
   <div class="modal-card admin-edit-modal">
@@ -154,6 +184,13 @@
           <div class="field full"><label>Pełny opis *</label><textarea name="description" rows="6" maxlength="5000" required></textarea></div>
           <div class="field full"><label>Informacje zdrowotne</label><textarea name="health_description" rows="3" maxlength="1000"></textarea></div>
           <div class="field full"><label>Adres zdjęcia</label><input type="url" name="main_image_url" placeholder="https://..."></div>
+
+          <div class="field full">
+            <label>Dodatkowe zdjęcia — po jednym adresie w każdej linii</label>
+            <textarea name="additional_image_urls" rows="5" placeholder="https://.../zdjecie-2.jpg&#10;https://.../zdjecie-3.jpg"></textarea>
+            <small>Możesz dodać maksymalnie 12 dodatkowych zdjęć.</small>
+          </div>
+
           <div class="checks full">
             <label><input type="checkbox" name="vaccinated"> Zaszczepiony</label>
             <label><input type="checkbox" name="dewormed"> Odrobaczony</label>
