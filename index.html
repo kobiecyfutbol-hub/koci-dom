@@ -32,20 +32,20 @@
 </header>
 <main id="app">
   <section class="hero">
-    <div class="wrap hero-grid">
+    <div class="wrap hero-grid hero-grid-single">
       <div>
         <span class="eyebrow">Ogólnopolski portal adopcyjny</span>
         <h1>Znajdź kota, który czeka właśnie na Ciebie.</h1>
-        <p>Przeglądaj zweryfikowane ogłoszenia. Każde zgłoszenie przed publikacją sprawdza administrator.</p>
+        <p>Znajdź kota do adopcji w swojej okolicy, zapisz ulubione ogłoszenia i skontaktuj się z opiekunem.</p>
         <div class="hero-actions">
-          <a href="#/dodaj" class="btn primary big">Dodaj kota do adopcji</a>
-          <a href="#/jak-to-dziala" class="btn light big">Jak to działa?</a>
+          <a href="#homeView" class="btn primary big">Zobacz koty</a>
+          <a href="#/dodaj" class="btn light big">Dodaj ogłoszenie</a>
         </div>
-      </div>
-      <div class="hero-card">
-        <div class="hero-cat">🐈</div>
-        <strong>Bezpieczne ogłoszenia</strong>
-        <span>Moderowane przed publikacją</span>
+        <div class="hero-points">
+          <span>🐾 Koty z całej Polski</span>
+          <span>❤️ Ulubione i dopasowanie</span>
+          <span>🏠 Profile fundacji</span>
+        </div>
       </div>
     </div>
   </section>
@@ -256,6 +256,7 @@
       <div class="field"><label>Hasło</label><input type="password" name="password" minlength="6" required></div>
       <div id="authMessage" class="message hidden"></div>
       <button class="btn primary big full-btn" type="submit" id="authSubmit">Zaloguj się</button>
+      <button class="auth-text-button hidden" type="button" id="resendConfirmationBtn">Wyślij ponownie mail potwierdzający</button>
     </form>
   </div>
 </div>
